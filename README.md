@@ -4,6 +4,18 @@ A lightweight Python tool that monitors API endpoints, measures response times, 
 
 Built as a practical project to develop skills in API troubleshooting, monitoring, incident investigation, and Python automation.
 
+Running Automated Tests
+
+The project includes automated unit tests covering successful API responses, server errors, request timeouts, and connection failures.
+
+Run the tests from the project directory:
+
+python -m unittest -v
+
+The tests use mocked HTTP responses, so they do not depend on external APIs being available.
+
+All four tests should pass when the application behaves as expected.
+
 Features
 
 Endpoint monitoring: Sends HTTP requests to configured API endpoints.
@@ -16,7 +28,7 @@ Slow-response warnings: Flags successful responses that exceed a configurable th
 
 Summary reporting: Displays healthy, slow, and failed endpoint counts.
 
-JSON reporting: Saves the latest check results to health_report.json.
+JSON reporting: Saves the latest check results to health\_report.json.
 
 Continuous monitoring: Repeats checks every 60 seconds.
 
@@ -58,7 +70,7 @@ python -m venv .venv
 
 Activate the virtual environment on Windows:
 
-.venv\Scripts\activate
+.venv\\Scripts\\activate
 
 Install the dependency:
 
@@ -66,19 +78,19 @@ python -m pip install requests
 
 Configuration
 
-Edit health_checker.py to configure the endpoints you want to monitor.
+Edit health\_checker.py to configure the endpoints you want to monitor.
 
 Example:
 
-ENDPOINTS = [
-    {
-        "name": "JSONPlaceholder API",
-        "url": "https://jsonplaceholder.typicode.com/posts/1"
-    }
+ENDPOINTS = \[
+{
+"name": "JSONPlaceholder API",
+"url": "https://jsonplaceholder.typicode.com/posts/1"
+}
 ]
 
 TIMEOUT = 5
-SLOW_THRESHOLD_MS = 1000
+SLOW\_THRESHOLD\_MS = 1000
 
 The timeout is measured in seconds, and the slow-response threshold is measured in milliseconds.
 
@@ -86,9 +98,9 @@ Usage
 
 Run a monitoring session:
 
-python health_checker.py
+python health\_checker.py
 
-The script checks the configured endpoints, displays a summary, and saves the latest results to health_report.json. Continuous monitoring repeats every 60 seconds.
+The script checks the configured endpoints, displays a summary, and saves the latest results to health\_report.json. Continuous monitoring repeats every 60 seconds.
 
 Press Ctrl + C to stop monitoring.
 
@@ -99,14 +111,14 @@ Status: UP
 HTTP code: 200
 Response time: 120.45 ms
 
-SUMMARY
-========================================
+# SUMMARY
+
 Total endpoints: 2
 Healthy: 1
 Slow: 0
 Failed: 1
 
-Report saved to health_report.json
+Report saved to health\_report.json
 
 Response times and results are illustrative and will vary.
 
@@ -143,3 +155,4 @@ Response-time statistics and availability summaries.
 Disclaimer
 
 Use endpoints that you own or are authorised to monitor. Avoid sending credentials or sensitive information to public repositories.
+
