@@ -1,0 +1,6 @@
+
+.venv/
+__pycache__/
+*.py[cod]
+health_report.json
+health_history.csv
