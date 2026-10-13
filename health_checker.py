@@ -1,3 +1,5 @@
+import csv
+import os
 import json
 import time
 import requests
@@ -127,6 +129,35 @@ def main():
         json.dump(results, file, indent=4)
 
     print("\nReport saved to health_report.json")
+    
+    file_exists = os.path.exists("health_history.csv")
+
+    with open(
+        "health_history.csv",
+        "a",
+        newline="",
+        encoding="utf-8"
+    ) as file:
+        writer = csv.DictWriter(
+            file,
+            fieldnames=[
+                "timestamp",
+                "name",
+                "url",
+                "status",
+                "http_code",
+                "response_ms",
+                "error"
+            ]
+        )
+
+        if not file_exists:
+            writer.writeheader()
+
+        writer.writerows(results)
+
+    print("Historical results saved to health_history.csv")
+
 
 
 
