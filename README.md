@@ -4,6 +4,7 @@ A lightweight Python tool that monitors API endpoints, measures response times, 
 
 Built as a practical project to develop skills in API troubleshooting, monitoring, incident investigation, and Python automation.
 
+
 Features
 
 Endpoint monitoring: Sends HTTP requests to configured API endpoints.
@@ -21,6 +22,20 @@ JSON reporting: Saves the latest check results to health_report.json.
 Continuous monitoring: Repeats checks every 60 seconds.
 
 Error handling: Handles request timeouts and connection-related errors.
+
+
+Running Automated Tests
+
+The project includes automated unit tests covering successful API responses, server errors, request timeouts, and connection failures.
+
+Run the tests from the project directory:
+
+python -m unittest -v
+
+The tests use mocked HTTP responses, so they do not depend on external APIs being available.
+
+All four tests should pass when the application behaves as expected.
+
 
 Technologies
 
@@ -41,6 +56,7 @@ Python 3
 Internet connection
 
 Git (optional, for version control)
+
 
 Installation
 
@@ -64,6 +80,7 @@ Install the dependency:
 
 python -m pip install requests
 
+
 Configuration
 
 Edit health_checker.py to configure the endpoints you want to monitor.
@@ -81,6 +98,7 @@ TIMEOUT = 5
 SLOW_THRESHOLD_MS = 1000
 
 The timeout is measured in seconds, and the slow-response threshold is measured in milliseconds.
+
 
 Usage
 
