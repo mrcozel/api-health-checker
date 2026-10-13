@@ -1,9 +1,31 @@
-import csv
-import os
-import json
 import time
 import requests
 from datetime import datetime
+import json
+import csv
+import os
+import logging
+from logging.handlers import RotatingFileHandler
+
+logger = logging.getLogger()
+logger.setLevel(logging.INFO)
+
+file_handler = RotatingFileHandler(
+    "health_checker.log",
+    maxBytes=1_000_000,
+    backupCount=3,
+    encoding="utf-8"
+)
+
+formatter = logging.Formatter(
+    "%(asctime)s %(levelname)-8s %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S"
+)
+
+file_handler.setFormatter(formatter)
+logger.addHandler(file_handler)
+
+
 
 # APIs we want to monitor
 ENDPOINTS = [
@@ -23,6 +45,7 @@ SLOW_THRESHOLD_MS = 1000
 
 def check_endpoint(name, url):
     print(f"\nChecking: {name}")
+    logging.info("Checking API: %s", name)
 
     start_time = time.perf_counter()
 
@@ -52,6 +75,7 @@ def check_endpoint(name, url):
         }
 
     except requests.exceptions.Timeout:
+        logging.error("Request timed out for %s", name)
         result = {
             "timestamp": datetime.now().isoformat(
                 timespec="seconds"
@@ -65,6 +89,7 @@ def check_endpoint(name, url):
         }
 
     except requests.exceptions.RequestException as exc:
+        logging.exception("Request failed for %s: %s", name, exc)
         result = {
             "timestamp": datetime.now().isoformat(
                 timespec="seconds"
@@ -80,6 +105,28 @@ def check_endpoint(name, url):
     print(f"Status: {result['status']}")
     print(f"HTTP code: {result['http_code']}")
     print(f"Response time: {result['response_ms']} ms")
+
+    if result["status"] == "UP":
+        logging.info(
+            "API healthy: %s | HTTP %s | %.2f ms",
+            name,
+            result["http_code"],
+            result["response_ms"]
+            )
+    elif result["status"] == "SLOW":
+        logging.warning(
+            "API responding slowly: %s | HTTP %s | %.2f ms",
+            name,
+            result["http_code"],
+            result["response_ms"]
+            )
+    else:
+        logging.error(
+            "API failed: %s | HTTP %s | Error: %s",
+            name,
+            result["http_code"],
+            result["error"] or "Unexpected HTTP status"
+            )
 
     if result["status"] == "SLOW":
     	print("WARNING: API is responding slowly!")	

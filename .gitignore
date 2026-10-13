@@ -4,3 +4,5 @@ __pycache__/
 *.py[cod]
 health_report.json
 health_history.csv
+health_checker.log
+health_checker_backup.py
