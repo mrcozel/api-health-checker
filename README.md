@@ -82,6 +82,50 @@ TIMEOUT=5
 
 Both settings must be positive whole numbers. If they are missing, the defaults are used. The slow-response threshold is currently 1,000 ms, and the failure-alert threshold is three consecutive failed checks.
 
+### 5. Configure API authentication (optional)
+
+Public endpoints need no authentication. For protected endpoints, add an `auth` object to that endpoint in `endpoints.json`. Store the credential itself in an environment variable, not in the JSON file.
+
+**Bearer token**
+
+```json
+{
+  "name": "Protected API",
+  "url": "https://api.example.com/resource",
+  "auth": {
+    "type": "bearer",
+    "token_env": "EXAMPLE_API_TOKEN"
+  }
+}
+```
+
+Set the token in your environment. For a temporary Windows Command Prompt session:
+
+```bat
+set EXAMPLE_API_TOKEN=your_token_value
+```
+
+Or add `EXAMPLE_API_TOKEN=your_token_value` to your local `.env` file, which should not be committed.
+
+**API key**
+
+```json
+{
+  "name": "API Key Protected API",
+  "url": "https://api.example.com/resource",
+  "auth": {
+    "type": "api_key",
+    "key_env": "EXAMPLE_API_KEY",
+    "header": "X-API-Key"
+  }
+}
+```
+
+Set `EXAMPLE_API_KEY` in the environment or local `.env` file. The `header` field is optional and defaults to `X-API-Key`; use the header name required by your API provider.
+
+If a configured credential is missing, the checker reports a configuration error rather than silently making an unauthenticated request. Never use real secrets in examples, commits, or screenshots.
+
+
 ### 5. Configure email alerts (optional)
 
 Email notifications use the Brevo API. Create an API key in your Brevo account and configure it as an environment variable. On Windows Command Prompt:
