@@ -6,6 +6,7 @@ from datetime import datetime
 import json
 import csv
 import os
+from dotenv import load_dotenv
 import logging
 from logging.handlers import RotatingFileHandler
 
@@ -60,10 +61,39 @@ def load_endpoints():
         raise
 
 
-TIMEOUT = 5
+
+
+# Load environment settings from .env
+load_dotenv()
+
+
+def load_positive_integer(setting_name, default):
+    """Load a positive integer setting from the environment."""
+    value = os.getenv(setting_name, str(default))
+
+    try:
+        number = int(value)
+    except (TypeError, ValueError):
+        raise ValueError(
+            f"{setting_name} must be a positive whole number; got {value!r}"
+        ) from None
+
+    if number < 1:
+        raise ValueError(
+            f"{setting_name} must be at least 1; got {number}"
+        )
+
+    return number
+
+
+CHECK_INTERVAL = load_positive_integer("CHECK_INTERVAL", 60)
+TIMEOUT = load_positive_integer("TIMEOUT", 5)
+
 SLOW_THRESHOLD_MS = 1000
 FAILURE_THRESHOLD = 3
 STATE_FILE = "endpoint_state.json"
+
+
 
 
 def load_endpoint_states():
@@ -395,7 +425,7 @@ if __name__ == "__main__":
         try:
             while True:
                 main()
-                time.sleep(60)
+                time.sleep(CHECK_INTERVAL)
         except KeyboardInterrupt:
             logging.info("Health checker stopped by user")
             print("\nHealth checker stopped.")
