@@ -230,3 +230,44 @@ GitHub Actions runs the automated tests on pushes and pull requests.
 ## Disclaimer
 
 Only monitor endpoints you own or are authorised to test. Never commit API keys, credentials, or other sensitive information to a public repository.
+
+### Run the local authentication test API
+
+The repository includes a small test server for trying the health checker against public, bearer-token, and API-key endpoints. It binds to `127.0.0.1` only and is intended for local testing.
+
+1. In the project directory, start the server:
+
+   ```bash
+   python test_api.py
+   ```
+
+   Keep this terminal open. In a second terminal, run the requests below.
+
+2. Check the public endpoint and valid bearer token:
+
+   ```bash
+   curl -i http://127.0.0.1:8001/health
+   curl -i -H "Authorization: Bearer demo-bearer-123" http://127.0.0.1:8001/bearer
+   ```
+
+   Both should return **HTTP 200 OK**.
+
+3. Try an invalid bearer token:
+
+   ```bash
+   curl -i -H "Authorization: Bearer wrong-token" http://127.0.0.1:8001/bearer
+   ```
+
+   This should return **HTTP 401 Unauthorized**.
+
+4. Check API-key authentication:
+
+   ```bash
+   curl -i -H "X-API-Key: demo-api-key-456" http://127.0.0.1:8001/api-key
+   curl -i -H "X-API-Key: wrong-key" http://127.0.0.1:8001/api-key
+   ```
+
+   The valid key should return **HTTP 200 OK**; the invalid key should return **HTTP 401 Unauthorized**.
+
+These demo credentials are for this local test server only. Do not use them for real services or production credentials.
+
