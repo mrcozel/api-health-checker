@@ -36,12 +36,28 @@ if not any(
 
 
 # APIs we want to monitor
-ENDPOINTS = [
-    {
-        "name": "JSONPlaceholder API",
-        "url": "https://jsonplaceholder.typicode.com/posts/1"
-    },
-]
+
+def load_endpoints():
+    """Load API endpoints from endpoints.json."""
+    try:
+        with open("endpoints.json", "r", encoding="utf-8") as file:
+            endpoints = json.load(file)
+
+        if not isinstance(endpoints, list) or not endpoints:
+            raise ValueError("Endpoint configuration must be a non-empty list.")
+
+        for endpoint in endpoints:
+            if not isinstance(endpoint, dict):
+                raise ValueError("Each endpoint must be a JSON object.")
+
+            if not endpoint.get("name") or not endpoint.get("url"):
+                raise ValueError("Each endpoint must have a name and URL.")
+
+        return endpoints
+
+    except (OSError, json.JSONDecodeError, ValueError) as error:
+        logging.error("Failed to load endpoints: %s", error)
+        raise
 
 TIMEOUT = 5
 SLOW_THRESHOLD_MS = 1000
@@ -216,7 +232,7 @@ def main():
     print("API HEALTH CHECKER")
     print("=" * 40)
 
-    for endpoint in ENDPOINTS:
+    for endpoint in load_endpoints():
         result = check_endpoint(
             endpoint["name"],
             endpoint["url"]
