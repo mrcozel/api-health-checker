@@ -13,6 +13,9 @@ API_KEY = os.getenv("TEST_API_KEY", "demo-api-key-456")
 
 
 class TestAPIHandler(BaseHTTPRequestHandler):
+    # Prevent pytest from treating this server handler as a test class.
+    __test__ = False
+
     def send_json(self, status, data):
         body = json.dumps(data).encode("utf-8")
         self.send_response(status)
