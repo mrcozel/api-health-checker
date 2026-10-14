@@ -6,3 +6,7 @@ health_report.json
 health_history.csv
 health_checker.log
 health_checker_backup.py
+.env
+.env.*
+!.env.example
+msal_token_cache.bin

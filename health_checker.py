@@ -1,5 +1,6 @@
 import time
 import requests
+from email_alerts import send_alert
 from datetime import datetime
 import json
 import csv
@@ -136,6 +137,7 @@ def check_endpoint(name, url):
     return result
 
 
+
 def main():
     results = []
 
@@ -147,6 +149,21 @@ def main():
             endpoint["name"],
             endpoint["url"]
         )
+        results.append(result)
+
+        if result["status"] == "FAIL":
+            send_alert(
+                f"API FAILURE: {result['name']}",
+                (
+                    f"API endpoint: {result['name']}\n"
+                    f"URL: {result['url']}\n"
+                    f"Status: {result['status']}\n"
+                    f"HTTP code: {result['http_code']}\n"
+                    f"Error: {result['error'] or 'Unexpected HTTP status'}\n"
+                    f"Time: {result['timestamp']}"
+                )
+            )
+
         results.append(result)
 
     healthy = sum(
@@ -209,12 +226,46 @@ def main():
 
 
 
+
+def test_failure_alert():
+    endpoint = {
+        "name": "HTTP 500 Test",
+        "url": "https://httpbin.org/status/500"
+    }
+
+    result = check_endpoint(
+        endpoint["name"],
+        endpoint["url"]
+    )
+
+    if result["status"] == "FAIL":
+        send_alert(
+            f"API FAILURE: {result['name']}",
+            (
+                f"API endpoint: {result['name']}\n"
+                f"URL: {result['url']}\n"
+                f"Status: {result['status']}\n"
+                f"HTTP code: {result['http_code']}\n"
+                f"Error: {result['error'] or 'Unexpected HTTP status'}\n"
+                f"Time: {result['timestamp']}"
+            )
+        )
+    else:
+        print("The test endpoint did not fail, so no alert was sent.")
+
+
 if __name__ == "__main__":
-    try:
-        while True:
-            main()
-            print("\nNext check in 60 seconds...")
-            time.sleep(60)
-    except KeyboardInterrupt:
-        print("\nMonitoring stopped by user.")
+    import sys
+
+    if "--test-alert" in sys.argv:
+        test_failure_alert()
+    else:
+        try:
+            while True:
+                main()
+                time.sleep(60)
+        except KeyboardInterrupt:
+            logging.info("Health checker stopped by user")
+
+
 
