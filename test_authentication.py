@@ -73,6 +73,49 @@ class TestAuthenticationHeaders(unittest.TestCase):
             {"Authorization": "Bearer test-token-value"}
         )
 
+    @patch("health_checker.requests.get")
+    @patch.dict(os.environ, {"TEST_API_KEY": "test-api-key-value"})
+    def test_check_endpoint_sends_api_key_header(self, mock_get):
+        mock_response = Mock()
+        mock_response.status_code = 200
+        mock_get.return_value = mock_response
+
+        result = health_checker.check_endpoint(
+            "API key authenticated API",
+            "https://example.com",
+            {"type": "api_key", "key_env": "TEST_API_KEY"}
+        )
+
+        self.assertEqual(result["status"], "UP")
+        mock_get.assert_called_once()
+        self.assertEqual(
+            mock_get.call_args.kwargs["headers"],
+            {"X-API-Key": "test-api-key-value"}
+        )
+
+    @patch("health_checker.requests.get")
+    def test_check_endpoint_marks_401_as_fail(self, mock_get):
+        mock_response = Mock()
+        mock_response.status_code = 401
+        mock_get.return_value = mock_response
+
+        result = health_checker.check_endpoint(
+            "Invalid credentials",
+            "http://127.0.0.1:8001/bearer",
+            {"type": "bearer", "token_env": "TEST_API_TOKEN"}
+        ) if False else None
+
+        # Use a mocked response to verify that HTTP 401 is treated as failure.
+        with patch.dict(os.environ, {"TEST_API_TOKEN": "wrong-token"}):
+            result = health_checker.check_endpoint(
+                "Invalid credentials",
+                "https://example.com",
+                {"type": "bearer", "token_env": "TEST_API_TOKEN"}
+            )
+
+        self.assertEqual(result["status"], "FAIL")
+        self.assertEqual(result["http_code"], 401)
+
 
 if __name__ == "__main__":
     unittest.main()
