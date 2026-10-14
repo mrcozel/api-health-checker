@@ -10,6 +10,8 @@ Built as a practical portfolio project to demonstrate skills in API troubleshoot
 
 
 
+
+
 Features
 
 
@@ -67,6 +69,8 @@ Automated testing: Includes unit tests for successful responses, failures, timeo
 
 
 Continuous integration: Uses GitHub Actions to run automated tests when changes are pushed to the repository.
+
+
 
 
 
@@ -130,6 +134,8 @@ A Brevo account and API key for email alerts
 
 
 
+
+
 Installation
 
 
@@ -171,6 +177,8 @@ Install the dependencies:
 
 
 python -m pip install requests
+
+
 
 
 
@@ -257,6 +265,8 @@ To test the email integration separately:
 
 
 python email\_alerts.py
+
+
 
 
 
@@ -466,6 +476,8 @@ This helps verify that changes do not break the existing functionality.
 
 
 
+
+
 Output Files
 
 
@@ -531,6 +543,74 @@ Add retry policies and more advanced alert-suppression controls.
 
 
 Expand monitoring to include authentication, API response validation, and additional performance metrics.
+
+
+
+
+
+API Health Statistics
+
+
+
+The project includes a statistics report that analyses historical API checks stored in health\_history.csv.
+
+
+
+Run the report with:
+
+
+
+python health\_stats.py
+
+
+
+The report provides:
+
+
+
+Observed availability: Percentage of recorded checks with UP or SLOW status.
+
+
+
+Average response time: Mean response time for checks with valid timing data.
+
+
+
+Slowest response: Highest recorded response time.
+
+
+
+Total checks: Number of historical checks per API.
+
+
+
+Slow and failed checks: Counts of degraded and unsuccessful responses.
+
+
+
+The statistics are calculated from historical CSV data and remain available across checker restarts.
+
+
+
+Running Tests
+
+
+
+Run all automated tests with:
+
+
+
+python -m pytest -v
+
+
+
+The test suite covers API health checks, failure and recovery alerts, and statistics calculations.
+
+
+
+
+
+
 
 
 
