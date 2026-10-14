@@ -59,13 +59,67 @@ def load_endpoints():
         logging.error("Failed to load endpoints: %s", error)
         raise
 
+
 TIMEOUT = 5
 SLOW_THRESHOLD_MS = 1000
 FAILURE_THRESHOLD = 3
+STATE_FILE = "endpoint_state.json"
 
-# Tracks failure counts and alert state for each endpoint.
-# These values reset when the program restarts.
-endpoint_states = {}
+
+def load_endpoint_states():
+    """Load saved failure and alert states from JSON."""
+    try:
+        with open(STATE_FILE, "r", encoding="utf-8") as file:
+            saved_states = json.load(file)
+
+        if not isinstance(saved_states, dict):
+            raise ValueError("Saved endpoint state must be a JSON object.")
+
+        for name, state in saved_states.items():
+            if (
+                not isinstance(state, dict)
+                or not isinstance(state.get("consecutive_failures"), int)
+                or state["consecutive_failures"] < 0
+                or not isinstance(state.get("alert_sent"), bool)
+            ):
+                raise ValueError(f"Invalid saved state for endpoint: {name}")
+
+        logging.info("Loaded saved endpoint states.")
+        return saved_states
+
+    except FileNotFoundError:
+        logging.info("No saved endpoint state found. Starting fresh.")
+        return {}
+
+    except (OSError, json.JSONDecodeError, ValueError) as error:
+        logging.error("Could not load endpoint state: %s", error)
+        raise
+
+
+def save_endpoint_states():
+    """Save endpoint states safely using a temporary file."""
+    temp_file = STATE_FILE + ".tmp"
+
+    try:
+        with open(temp_file, "w", encoding="utf-8") as file:
+            json.dump(endpoint_states, file, indent=4)
+
+        os.replace(temp_file, STATE_FILE)
+        logging.info("Endpoint states saved.")
+
+    except OSError as error:
+        logging.error("Could not save endpoint states: %s", error)
+
+        try:
+            if os.path.exists(temp_file):
+                os.remove(temp_file)
+        except OSError:
+            logging.error("Could not remove temporary state file.")
+
+
+# Restore saved state when the program starts.
+endpoint_states = load_endpoint_states()
+
 
 
 def check_endpoint(name, url):
@@ -156,6 +210,7 @@ def check_endpoint(name, url):
     return result
 
 
+
 def update_endpoint_state(result):
     name = result["name"]
 
@@ -189,12 +244,11 @@ def update_endpoint_state(result):
 
             if alert_sent:
                 state["alert_sent"] = True
-                logging.warning(
-                    "Failure alert sent for %s", name
-                )
+                logging.warning("Failure alert sent for %s", name)
             else:
                 logging.error(
-                    "Failure alert could not be sent for %s", name
+                    "Failure alert failed for %s; will retry on a later check.",
+                    name
                 )
 
     elif result["status"] == "UP":
@@ -211,19 +265,23 @@ def update_endpoint_state(result):
             )
 
             if alert_sent:
-                logging.info(
-                    "Recovery alert sent for %s", name
-                )
+                logging.info("Recovery alert sent for %s", name)
+                state["consecutive_failures"] = 0
+                state["alert_sent"] = False
             else:
                 logging.error(
-                    "Recovery alert could not be sent for %s", name
+                    "Recovery alert failed for %s; will retry on a later check.",
+                    name
                 )
-
-        # UP confirms recovery. Reset the failure state.
-        state["consecutive_failures"] = 0
-        state["alert_sent"] = False
+                # Keep the incident state so the recovery email can be retried.
+        else:
+            # A healthy response resets failures below the alert threshold.
+            state["consecutive_failures"] = 0
+            state["alert_sent"] = False
 
     # SLOW leaves the failure counter and alert state unchanged.
+    save_endpoint_states()
+
 
 
 def main():
