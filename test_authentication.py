@@ -99,12 +99,6 @@ class TestAuthenticationHeaders(unittest.TestCase):
         mock_response.status_code = 401
         mock_get.return_value = mock_response
 
-        result = health_checker.check_endpoint(
-            "Invalid credentials",
-            "http://127.0.0.1:8001/bearer",
-            {"type": "bearer", "token_env": "TEST_API_TOKEN"}
-        ) if False else None
-
         # Use a mocked response to verify that HTTP 401 is treated as failure.
         with patch.dict(os.environ, {"TEST_API_TOKEN": "wrong-token"}):
             result = health_checker.check_endpoint(
