@@ -126,7 +126,7 @@ Set `EXAMPLE_API_KEY` in the environment or local `.env` file. The `header` fiel
 If a configured credential is missing, the checker reports a configuration error rather than silently making an unauthenticated request. Never use real secrets in examples, commits, or screenshots.
 
 
-### 5. Configure email alerts (optional)
+### 6. Configure email alerts (optional)
 
 Email notifications use the Brevo API. Create an API key in your Brevo account and configure it as an environment variable. On Windows Command Prompt:
 
