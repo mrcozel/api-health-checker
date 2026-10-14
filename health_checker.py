@@ -54,6 +54,9 @@ def load_endpoints():
             if not endpoint.get("name") or not endpoint.get("url"):
                 raise ValueError("Each endpoint must have a name and URL.")
 
+            # Validate authentication configuration and required environment variables.
+            build_auth_headers(endpoint.get("auth"))
+
         return endpoints
 
     except (OSError, json.JSONDecodeError, ValueError) as error:
@@ -152,14 +155,61 @@ endpoint_states = load_endpoint_states()
 
 
 
-def check_endpoint(name, url):
+def build_auth_headers(auth_config=None):
+    """Build request headers for an endpoint without storing secrets in config."""
+    if auth_config is None:
+        return {}
+
+    if not isinstance(auth_config, dict):
+        raise ValueError("Endpoint auth configuration must be a JSON object.")
+
+    auth_type = auth_config.get("type")
+
+    if auth_type == "bearer":
+        token_env = auth_config.get("token_env")
+        if not isinstance(token_env, str) or not token_env.strip():
+            raise ValueError("Bearer auth requires a non-empty 'token_env' setting.")
+
+        token = os.getenv(token_env)
+        if not token:
+            raise ValueError(
+                f"Missing environment variable {token_env!r} required for bearer authentication."
+            )
+
+        return {"Authorization": f"Bearer {token}"}
+
+    if auth_type == "api_key":
+        key_env = auth_config.get("key_env")
+        header = auth_config.get("header", "X-API-Key")
+
+        if not isinstance(key_env, str) or not key_env.strip():
+            raise ValueError("API key auth requires a non-empty 'key_env' setting.")
+        if not isinstance(header, str) or not header.strip():
+            raise ValueError("API key auth requires a non-empty header name.")
+
+        api_key = os.getenv(key_env)
+        if not api_key:
+            raise ValueError(
+                f"Missing environment variable {key_env!r} required for API key authentication."
+            )
+
+        return {header: api_key}
+
+    raise ValueError(
+        f"Unsupported authentication type {auth_type!r}. Use 'bearer' or 'api_key'."
+    )
+
+
+def check_endpoint(name, url, auth_config=None):
     print(f"\nChecking: {name}")
     logging.info("Checking API: %s", name)
 
+    # Resolve credentials before making the request; never log the secret value.
+    headers = build_auth_headers(auth_config)
     start_time = time.perf_counter()
 
     try:
-        response = requests.get(url, timeout=TIMEOUT)
+        response = requests.get(url, headers=headers, timeout=TIMEOUT)
         elapsed = (time.perf_counter() - start_time) * 1000
 
         if not 200 <= response.status_code < 300:
@@ -323,7 +373,8 @@ def main():
     for endpoint in load_endpoints():
         result = check_endpoint(
             endpoint["name"],
-            endpoint["url"]
+            endpoint["url"],
+            endpoint.get("auth")
         )
 
         # All failure and recovery alert logic is handled here.
