@@ -34,10 +34,6 @@ ENDPOINTS = [
         "name": "JSONPlaceholder API",
         "url": "https://jsonplaceholder.typicode.com/posts/1"
     },
-    {
-        "name": "HTTP 500 Test",
-        "url": "https://httpbin.org/status/500"
-    },
 ]
 
 TIMEOUT = 5
@@ -163,8 +159,6 @@ def main():
                     f"Time: {result['timestamp']}"
                 )
             )
-
-        results.append(result)
 
     healthy = sum(
         result["status"] == "UP"
