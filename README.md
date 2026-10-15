@@ -227,6 +227,53 @@ GitHub Actions runs the automated tests on pushes and pull requests.
 - Configuration validation and secure handling of secrets
 - Unit testing, mocking, and CI validation
 
+## Incident history
+
+After the checker has recorded checks in `health_history.csv`, run:
+
+```bash
+python incident_history.py
+```
+
+To read a history file from another location:
+
+```bash
+python incident_history.py --history path/to/health_history.csv
+```
+
+This read-only report shows each API's incident start, recovery, observed duration
+in seconds, and failed/slow check counts. It uses the existing CSV without changing
+the health checker or sending notifications.
+
+An incident starts at the first `FAIL` or `SLOW` check and ends at the next `UP`
+check for the same endpoint name and URL. Consecutive failures and slow responses
+remain one incident, including transitions between them. An endpoint that has not
+recorded recovery is marked **ongoing**, with duration measured only through its
+last recorded check. A single ongoing check therefore has an observed duration of
+zero seconds. Incidents are independent of the email alert threshold: even one
+failed or slow check appears here.
+
+For example, `FAIL` at 12:00, `SLOW` at 12:01, and `UP` at 12:03 produces:
+
+```text
+Type: FAIL + SLOW
+Started: 2026-10-15 12:00:00
+Recovered: 2026-10-15 12:03:00
+Observed duration: 180 seconds
+Failed checks: 1 | Slow checks: 1
+```
+
+Checks are processed in timestamp order; equal timestamps preserve CSV order.
+Missing required columns or values, invalid timestamps, and unknown statuses
+produce an error instead of an incomplete report. The checker's timestamps have
+no timezone offset and are interpreted in their recorded local time. History with
+consistent timezone-aware timestamps is also supported, but mixing timestamps
+with and without offsets is rejected.
+
+Durations are observations, not exact outage measurements: failures and recoveries
+may happen between checks, and gaps in monitoring cannot establish continued
+failure or availability. The report does not infer a root cause.
+
 ## Disclaimer
 
 Only monitor endpoints you own or are authorised to test. Never commit API keys, credentials, or other sensitive information to a public repository.
