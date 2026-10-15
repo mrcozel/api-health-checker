@@ -227,6 +227,46 @@ GitHub Actions runs the automated tests on pushes and pull requests.
 - Configuration validation and secure handling of secrets
 - Unit testing, mocking, and CI validation
 
+## Cyberpunk monitoring dashboard
+
+Run the local, read-only dashboard from the project directory:
+
+```bash
+python dashboard.py
+```
+
+Open **http://127.0.0.1:8000** in your browser. Keep the dashboard server running
+and run the health checker in another terminal to collect fresh observations.
+The dashboard reads `health_report.json` and `health_history.csv`; it does not
+run checks or send alerts. It uses Python's standard library and has no additional
+dependencies or external fonts/scripts.
+
+The dark interface includes high-contrast status labels, response times, observed
+availability, ongoing/recovered incident tables, search and status filters, and
+an incident CSV export of the currently filtered rows. Data refreshes every 30
+seconds while the page is visible, or when you press **Refresh data**. Disable
+auto-refresh using the checkbox. Recorded check timestamps remain visible, so
+an old observation is not mistaken for a new connectivity test.
+
+**View demo** displays clearly labeled illustrative services without modifying
+your monitoring files. Press **Use local data** to return to real observations.
+Empty and unreadable data files are reported explicitly; a failed refresh retains
+the previous snapshot with a visible error message.
+
+For another data directory or port:
+
+```bash
+python dashboard.py --data-dir path/to/checker-outputs --port 8080
+```
+
+The server binds only to `127.0.0.1` and serves the dashboard and its data endpoint;
+it does not expose the project directory. Endpoint history is retained across
+runs, so an endpoint removed from your checker configuration may still appear
+with its last recorded observation. Availability is calculated across all
+historical checks (`UP` and `SLOW` count as available); average response uses the
+latest endpoint checks with numeric response data. Incidents use the same rules
+and observation limits as the report below.
+
 ## Incident history
 
 After the checker has recorded checks in `health_history.csv`, run:
