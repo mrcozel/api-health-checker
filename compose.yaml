@@ -1,0 +1,43 @@
+services:
+  checker:
+    build: .
+    image: api-health-checker:local
+    restart: unless-stopped
+    environment:
+      CHECK_INTERVAL: ${CHECK_INTERVAL:-60}
+      TIMEOUT: ${TIMEOUT:-5}
+      BREVO_API_KEY: ${BREVO_API_KEY:-}
+    volumes:
+      - monitoring-data:/data
+      - ./endpoints.json:/data/endpoints.json:ro
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+
+  dashboard:
+    build: .
+    image: api-health-checker:local
+    command: ["python", "/app/dashboard.py", "--host", "0.0.0.0", "--data-dir", "/data"]
+    working_dir: /app
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:${DASHBOARD_PORT:-8080}:8000"
+    depends_on:
+      - checker
+    volumes:
+      - monitoring-data:/data:ro
+    read_only: true
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/', timeout=3).close()"]
+      interval: 30s
+      timeout: 5s
+      start_period: 10s
+      retries: 3
+
+volumes:
+  monitoring-data:

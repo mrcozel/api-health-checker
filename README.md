@@ -31,7 +31,54 @@ This portfolio project demonstrates practical application-support skills: troubl
 - Brevo email API
 - Git, GitHub, and GitHub Actions
 
-## Getting started
+## Docker and Kubernetes
+
+The same Docker image runs either the health checker or the dashboard. Docker
+Compose starts both and shares a named volume for reports, history, logs, and
+incident state. Kubernetes runs them together in one Pod with persistent storage.
+
+### Docker Compose
+
+With Docker Desktop running in **Linux containers** mode, run from the repository
+folder:
+
+```bash
+docker compose up --build -d
+docker compose ps
+docker compose logs --tail=100 checker
+```
+
+Open **http://127.0.0.1:8080** after the first monitoring cycle. This port avoids
+the existing local Python dashboard on 8000. Change it with `DASHBOARD_PORT` in
+your local `.env` file. Compose also reads `CHECK_INTERVAL`, `TIMEOUT`, and the
+optional `BREVO_API_KEY` from `.env`. For authenticated APIs, add the relevant
+credential environment-variable names under the checker service's `environment`
+section. Credentials and generated monitoring data are excluded from the image.
+
+Edit `endpoints.json` to configure monitoring. Both containers run as a non-root
+user. The dashboard mounts the monitoring volume read-only and its published
+port is restricted to localhost. It refreshes data without restarting containers.
+The volume starts empty; existing host CSV files are not automatically imported.
+
+```bash
+docker compose logs -f checker
+docker compose exec checker python /app/incident_history.py
+docker compose down
+```
+
+`down` stops the stack and preserves its volume. Do not add `--volumes` unless
+you intend to delete the monitoring history. Without `BREVO_API_KEY`, checks still
+run, but email notifications cannot be delivered. A dashboard health check confirms
+that its server responds; it does not claim that monitored APIs are healthy.
+
+### Kubernetes
+
+See [the Kubernetes quickstart](k8s/README.md) for building/loading the image,
+deploying configuration and persistent storage, optional Secrets, port-forwarding,
+and troubleshooting. The application stays at one replica to avoid simultaneous
+writers to the CSV and state files.
+
+## Run directly with Python
 
 ### 1. Clone the repository
 

@@ -1,0 +1,105 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: api-health-checker
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: api-health-checker
+  template:
+    metadata:
+      labels:
+        app: api-health-checker
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        fsGroup: 10001
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: checker
+          image: api-health-checker:local
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: CHECK_INTERVAL
+              valueFrom:
+                configMapKeyRef:
+                  name: monitoring-config
+                  key: CHECK_INTERVAL
+            - name: TIMEOUT
+              valueFrom:
+                configMapKeyRef:
+                  name: monitoring-config
+                  key: TIMEOUT
+          envFrom:
+            - secretRef:
+                name: monitoring-secrets
+                optional: true
+          volumeMounts:
+            - name: data
+              mountPath: /data
+            - name: endpoints
+              mountPath: /data/endpoints.json
+              subPath: endpoints.json
+              readOnly: true
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 250m
+              memory: 128Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+        - name: dashboard
+          image: api-health-checker:local
+          imagePullPolicy: IfNotPresent
+          command: ["python", "/app/dashboard.py", "--host", "0.0.0.0", "--data-dir", "/data"]
+          workingDir: /app
+          ports:
+            - name: http
+              containerPort: 8000
+          volumeMounts:
+            - name: data
+              mountPath: /data
+              readOnly: true
+          readinessProbe:
+            httpGet:
+              path: /
+              port: http
+            initialDelaySeconds: 2
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 30
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 250m
+              memory: 128Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: monitoring-data
+        - name: endpoints
+          configMap:
+            name: monitoring-config

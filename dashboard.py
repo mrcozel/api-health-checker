@@ -96,11 +96,13 @@ def make_handler(data_dir):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--port", type=int, default=8000)
+    parser.add_argument("--host", default="127.0.0.1",
+                        help="Bind address (use 0.0.0.0 inside a container)")
     parser.add_argument("--data-dir", type=Path, default=Path.cwd(),
                         help="Directory containing checker outputs (default: current directory)")
     args = parser.parse_args()
-    server = ThreadingHTTPServer(("127.0.0.1", args.port), make_handler(args.data_dir))
-    print(f"Dashboard: http://127.0.0.1:{server.server_port}", flush=True)
+    server = ThreadingHTTPServer((args.host, args.port), make_handler(args.data_dir))
+    print(f"Dashboard: http://{args.host}:{server.server_port}", flush=True)
     print(f"Reading monitoring data from {args.data_dir.resolve()}", flush=True)
     try:
         server.serve_forever()

@@ -25,3 +25,12 @@ jobs:
 
       - name: Run automated tests
         run: python -m unittest -v
+
+      - name: Build container image
+        run: docker build -t api-health-checker:test .
+
+      - name: Run tests inside the container
+        run: >-
+          docker run --rm --volume "$PWD:/tests:ro" --workdir /tmp
+          --env PYTHONPATH=/tests api-health-checker:test
+          python -m unittest discover -s /tests -v
