@@ -1,0 +1,4 @@
+[
+  {"name": "JSONPlaceholder API", "url": "https://jsonplaceholder.typicode.com/posts/1"},
+  {"name": "HTTPBin API", "url": "https://httpbin.org/status/200"}
+]

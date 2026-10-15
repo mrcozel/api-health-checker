@@ -1,0 +1,10 @@
+*
+!Dockerfile
+!requirements.txt
+!health_checker.py
+!email_alerts.py
+!health_stats.py
+!incident_history.py
+!dashboard.py
+!dashboard/
+!dashboard/index.html
