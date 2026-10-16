@@ -35,5 +35,5 @@ jobs:
           --env PYTHONPATH=/tests api-health-checker:test
           python -m unittest discover -s /tests -v
 
-      - name: Verify real Prometheus scrape
+      - name: Verify Prometheus scrape and Grafana provisioning
         run: python monitoring/smoke_test.py
