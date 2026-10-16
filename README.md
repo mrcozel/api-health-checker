@@ -78,6 +78,91 @@ deploying configuration and persistent storage, optional Secrets, port-forwardin
 and troubleshooting. The application stays at one replica to avoid simultaneous
 writers to the CSV and state files.
 
+## Verified deployment and recovery tests
+
+The following results were observed during a local deployment on **16 October
+2026**, using Windows, Docker Desktop 4.95.0, Docker Engine 29.8.2, and a Docker
+Desktop Kubernetes cluster running v1.36.1. Results below are recorded from the
+terminal output collected during the walkthrough; counts and Pod names will
+differ on another run.
+
+### Docker Compose: container restart
+
+From the repository root, the image built successfully and both services started:
+
+```powershell
+docker compose up --build -d
+docker compose ps
+```
+
+Incident history was inspected before and after restarting the containers:
+
+```powershell
+docker compose exec checker python /app/incident_history.py
+docker compose restart
+docker compose exec checker python /app/incident_history.py
+docker compose ps
+```
+
+**Observed result:** both recorded HTTPBin incidents remained after the restart.
+The first retained its 122-second duration and original timestamps. The second,
+previously ongoing, recorded recovery after monitoring resumed, with an observed
+duration of 85 seconds. Both containers were running, and the dashboard reported
+`healthy` at **http://127.0.0.1:8080**.
+
+### Kubernetes: deployment and Pod replacement
+
+The active context was `docker-desktop`, and the control-plane node was `Ready`.
+The existing locally built image was available to this cluster.
+
+```powershell
+kubectl --context docker-desktop apply -k k8s
+kubectl --context docker-desktop -n api-monitor rollout status deployment/api-health-checker --timeout=120s
+kubectl --context docker-desktop -n api-monitor get pods,pvc,svc
+```
+
+**Observed result:** the Pod was `2/2 Running` with zero container restarts,
+the `monitoring-data` claim was `Bound` with 1 GiB of ReadWriteOnce storage,
+and the dashboard Service was available internally on port 8000.
+
+In another PowerShell window, history rows were counted before replacing the
+Pod. The command counts CSV data rows, excluding the header:
+
+```powershell
+kubectl --context docker-desktop -n api-monitor exec deployment/api-health-checker -c checker -- python -c "import csv; print(sum(1 for _ in csv.DictReader(open('/data/health_history.csv'))))"
+kubectl --context docker-desktop -n api-monitor rollout restart deployment/api-health-checker
+kubectl --context docker-desktop -n api-monitor rollout status deployment/api-health-checker --timeout=120s
+kubectl --context docker-desktop -n api-monitor exec deployment/api-health-checker -c checker -- python -c "import csv; print(sum(1 for _ in csv.DictReader(open('/data/health_history.csv'))))"
+```
+
+| Verification | Observed result |
+| --- | --- |
+| History before Pod replacement | 22 recorded checks |
+| Replacement rollout | Successfully completed |
+| History after Pod replacement | 24 recorded checks |
+| Monitoring after replacement | Continued collecting checks |
+
+The retained and increasing check count is evidence that monitoring history
+persisted across the planned Pod replacement and collection resumed. This test
+does not establish byte-for-byte file integrity, node-failure recovery, backups,
+or high availability. The single-replica `Recreate` deployment has brief downtime
+during replacement.
+
+### Reconnect the Kubernetes dashboard
+
+Pod replacement can stop an existing port-forward. Start it again and keep that
+terminal open:
+
+```powershell
+kubectl --context docker-desktop -n api-monitor port-forward service/dashboard 8081:8000
+```
+
+Open **http://127.0.0.1:8081**. Forwarding and connection messages were observed
+successfully after the replacement. Port 8080 serves the separate Docker Compose
+deployment; port 8081 serves Kubernetes. Each deployment has its own monitoring
+storage. Stopping port-forwarding with Ctrl+C closes browser access through that
+forward; it does not stop monitoring in Kubernetes.
+
 ## Run directly with Python
 
 ### 1. Clone the repository
