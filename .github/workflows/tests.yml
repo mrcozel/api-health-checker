@@ -37,3 +37,6 @@ jobs:
 
       - name: Verify Prometheus scrape and Grafana provisioning
         run: python monitoring/smoke_test.py
+
+      - name: Verify alert rules and firing/resolved email delivery
+        run: python monitoring/alerting_smoke_test.py

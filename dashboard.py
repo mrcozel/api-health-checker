@@ -36,8 +36,11 @@ def build_snapshot(data_dir, stale_after_seconds=180, now=None):
     checks = load_checks(history) if history.exists() else []
     endpoints = {}
     counts = {}
+    failure_streaks = {}
     for timestamp, name, url, status in checks:
         counts.setdefault((name, url), {"UP": 0, "SLOW": 0, "FAIL": 0})[status] += 1
+        key = (name, url)
+        failure_streaks[key] = failure_streaks.get(key, 0) + 1 if status == "FAIL" else 0
         endpoints[(name, url)] = {
             "name": name, "url": url, "status": status,
             "timestamp": timestamp.isoformat(), "response_ms": None,
@@ -63,6 +66,7 @@ def build_snapshot(data_dir, stale_after_seconds=180, now=None):
             endpoints[key] = {k: row.get(k) for k in (
                 "name", "url", "status", "timestamp", "response_ms", "http_code")}
     for endpoint in endpoints.values():
+        endpoint["consecutive_failures"] = failure_streaks.get((endpoint["name"], endpoint["url"]), 0)
         endpoint["checks_by_status"] = counts.get(
             (endpoint["name"], endpoint["url"]), {"UP": 0, "SLOW": 0, "FAIL": 0})
         timestamp = datetime.fromisoformat(endpoint["timestamp"]).astimezone()

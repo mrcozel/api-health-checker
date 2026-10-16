@@ -98,13 +98,16 @@ def main():
                    "api-health-checker:test", "python", "/app/dashboard.py", "--host", "0.0.0.0")
             created.append(dashboard)
             config = Path("monitoring/prometheus.yml").resolve()
+            rules = Path("monitoring/alerts.yml").resolve()
             image = "prom/prometheus:v3.15.0"
             docker("run", "--rm", "--mount", f"type=bind,src={config},dst=/etc/prometheus/prometheus.yml,readonly",
+                   "--mount", f"type=bind,src={rules},dst=/etc/prometheus/alerts.yml,readonly",
                    "--entrypoint", "/bin/promtool", image, "check", "config", "/etc/prometheus/prometheus.yml")
             docker("run", "-d", "--name", prometheus, "--network", network,
                    "--network-alias", "prometheus",
                    "-p", "127.0.0.1::9090", "--mount",
-                   f"type=bind,src={config},dst=/etc/prometheus/prometheus.yml,readonly", image)
+                   f"type=bind,src={config},dst=/etc/prometheus/prometheus.yml,readonly",
+                   "--mount", f"type=bind,src={rules},dst=/etc/prometheus/alerts.yml,readonly", image)
             created.append(prometheus)
             port = docker("port", prometheus, "9090/tcp").splitlines()[0].rsplit(":", 1)[1]
             query = 'api_monitor_response_seconds{job="api-health-checker",endpoint="CI sample"}'

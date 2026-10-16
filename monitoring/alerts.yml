@@ -1,0 +1,40 @@
+groups:
+  - name: api-monitoring
+    rules:
+      - alert: CheckerOverdue
+        expr: |
+          ((api_monitor_stale{job="api-health-checker"} == 1)
+          or (api_monitor_endpoints{job="api-health-checker"} == 0))
+          and on(job, instance) (up{job="api-health-checker"} == 1)
+        for: 30s
+        labels:
+          severity: warning
+        annotations:
+          summary: Monitoring observations are overdue
+          description: The endpoint has no check within its configured freshness limit. Current API health is unknown. Check the checker process and logs.
+      - alert: ExporterUnreachable
+        expr: |
+          (up{job="api-health-checker"} == 0)
+          or absent(up{job="api-health-checker"})
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: Monitoring exporter cannot be scraped
+          description: Prometheus cannot collect dashboard metrics. Check the dashboard service, its data files, and the scrape target.
+      - alert: ApiRepeatedFailures
+        expr: |
+          (api_monitor_consecutive_failures{job="api-health-checker"} >= 3)
+          and on(job, instance, endpoint, endpoint_id)
+            (api_monitor_last_status{job="api-health-checker",status="FAIL"} == 1)
+          and on(job, instance, endpoint, endpoint_id)
+            (api_monitor_stale{job="api-health-checker"} == 0)
+          and on(job, instance, endpoint, endpoint_id)
+            (api_monitor_clock_skew{job="api-health-checker"} == 0)
+          and on(job, instance) (up{job="api-health-checker"} == 1)
+        for: 30s
+        labels:
+          severity: critical
+        annotations:
+          summary: API has repeated fresh failures
+          description: At least three consecutive retained checks failed and the latest failure is still fresh. Investigate the endpoint and checker logs.
