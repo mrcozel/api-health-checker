@@ -7,8 +7,10 @@ from http.server import ThreadingHTTPServer
 from pathlib import Path
 from urllib.error import HTTPError
 from urllib.request import urlopen
+from datetime import datetime, timedelta, timezone
 
-from dashboard import build_snapshot, make_handler
+from dashboard import build_snapshot, make_handler, positive_seconds
+import argparse
 
 
 class TestDashboard(unittest.TestCase):
@@ -31,6 +33,50 @@ class TestDashboard(unittest.TestCase):
         self.assertEqual(data["endpoints"], [])
         self.assertEqual(data["incidents"], [])
         self.assertFalse(data["history_available"])
+
+    def test_freshness_boundary_and_recovery_preserve_recorded_status(self):
+        self.history()
+        checked = datetime(2026, 10, 15, 12, 2)
+        fresh = build_snapshot(self.directory, now=checked + timedelta(seconds=179))
+        self.assertEqual(fresh["endpoints"][0]["freshness"], "FRESH")
+        stale = build_snapshot(self.directory, now=checked + timedelta(seconds=180))
+        self.assertEqual(stale["endpoints"][0]["freshness"], "STALE")
+        self.assertEqual(stale["endpoints"][0]["status"], "UP")
+        self.assertEqual(stale["endpoints"][0]["age_seconds"], 180)
+        report = [{"name": "API", "url": "https://example.com", "status": "UP",
+                   "timestamp": "2026-10-15T12:05:00"}]
+        (self.directory / "health_report.json").write_text(json.dumps(report))
+        recovered = build_snapshot(self.directory, now=checked + timedelta(seconds=181))
+        self.assertEqual(recovered["endpoints"][0]["freshness"], "FRESH")
+
+    def test_custom_limit_and_future_clock_warning(self):
+        self.history()
+        checked = datetime(2026, 10, 15, 12, 2)
+        self.assertEqual(build_snapshot(self.directory, 30, checked + timedelta(seconds=30))
+                         ["endpoints"][0]["freshness"], "STALE")
+        future = build_snapshot(self.directory, now=checked - timedelta(seconds=60))
+        self.assertEqual(future["endpoints"][0]["freshness"], "CLOCK_SKEW")
+
+    def test_offset_timestamps_use_elapsed_time(self):
+        report = [{"name": "API", "url": "url", "status": "FAIL",
+                   "timestamp": "2026-10-15T13:00:00+01:00"}]
+        (self.directory / "health_report.json").write_text(json.dumps(report))
+        snapshot = build_snapshot(self.directory, now=datetime(2026, 10, 15, 12, 3, tzinfo=timezone.utc))
+        endpoint = snapshot["endpoints"][0]
+        self.assertEqual(endpoint["age_seconds"], 180)
+        self.assertEqual(endpoint["freshness"], "STALE")
+        self.assertEqual(endpoint["status"], "FAIL")
+
+    def test_freshness_is_per_endpoint_and_invalid_limits_rejected(self):
+        self.history()
+        report = [{"name": "Other", "url": "url", "status": "UP",
+                   "timestamp": "2026-10-15T12:05:00"}]
+        (self.directory / "health_report.json").write_text(json.dumps(report))
+        snapshot = build_snapshot(self.directory, now=datetime(2026, 10, 15, 12, 5))
+        self.assertEqual([e["freshness"] for e in snapshot["endpoints"]], ["STALE", "FRESH"])
+        for value in ["0", "-1", "bad", "1.5"]:
+            with self.subTest(value=value), self.assertRaises(argparse.ArgumentTypeError):
+                positive_seconds(value)
 
     def test_history_provides_health_and_recovered_incident(self):
         self.history()

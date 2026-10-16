@@ -65,6 +65,12 @@ spec:
           imagePullPolicy: IfNotPresent
           command: ["python", "/app/dashboard.py", "--host", "0.0.0.0", "--data-dir", "/data"]
           workingDir: /app
+          env:
+            - name: STALE_AFTER_SECONDS
+              valueFrom:
+                configMapKeyRef:
+                  name: monitoring-config
+                  key: STALE_AFTER_SECONDS
           ports:
             - name: http
               containerPort: 8000

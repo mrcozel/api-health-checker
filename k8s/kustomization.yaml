@@ -13,6 +13,7 @@ configMapGenerator:
     literals:
       - CHECK_INTERVAL=60
       - TIMEOUT=5
+      - STALE_AFTER_SECONDS=180
 images:
   - name: api-health-checker
     newName: api-health-checker
