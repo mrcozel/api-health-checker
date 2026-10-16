@@ -379,11 +379,29 @@ appear. A RESOLVED notification means the rule no longer matches: for an API
 failure alert, that can also happen when data becomes stale or scraping fails,
 so confirm API health using fresh checks. It is not proof of recovery by itself.
 
-This manual procedure has not yet been verified on the user's running stack.
-CI uses promtool tests for pending/firing/recovery, missing targets and suppression,
-plus an isolated Alertmanager/Mailpit test for FIRING and RESOLVED SMTP delivery.
-The delivery test submits synthetic alerts directly to Alertmanager; it does not
-claim end-to-end notification through a live deployed Prometheus rule.
+### Verified deployed overdue-alert delivery test
+
+The checker stop/start procedure was verified on the local Docker Compose stack.
+Prometheus and Mailpit screenshots captured the following results:
+
+| Stage | Observed result |
+| --- | --- |
+| Checker stopped | The checker container showed Exited. |
+| Observations became overdue | `CheckerOverdue` showed two firing alert instances; the exporter and repeated-API-failure rules remained inactive. |
+| Initial email delivery | Mailpit received two `[FIRING:1] CheckerOverdue` emails, one per endpoint. |
+| Checker restarted | The checker was started again to resume observations. |
+| Resolution delivery | Mailpit received two `[RESOLVED] CheckerOverdue` emails, one per endpoint. Four messages were visible in total. |
+
+The endpoint IDs in both firing and resolved subjects were
+`cd8c48607b9279cd` (JSONPlaceholder API) and `9851f8f4ef1eae56` (HTTPBin API).
+This verifies the deployed notification path from a real Prometheus rule through
+Alertmanager to local SMTP capture, including resolved notifications. It does
+not establish an API outage or delivery to an external inbox.
+
+CI separately uses promtool tests for pending/firing/recovery, missing targets
+and suppression, plus an isolated Alertmanager/Mailpit test using synthetic
+alerts. The deployed test above exercises the actual overdue-monitoring rule;
+external Brevo SMTP delivery remains unconfigured and unverified.
 
 ### Optional external email through Brevo SMTP
 
