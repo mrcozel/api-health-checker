@@ -225,13 +225,62 @@ Prometheus stores its own samples in the `prometheus-data` named volume, with
 15-day time retention and a 1 GB size-retention limit (WAL/head data add overhead).
 `docker compose down` preserves it; `down --volumes` deletes it along with the
 checker history. To change the host port, set `PROMETHEUS_PORT` in `.env`.
-Both dashboard and Prometheus ports are bound to localhost. No Grafana dashboard
-or Kubernetes Prometheus deployment is included in this step.
+Dashboard and Prometheus ports are bound to localhost. Kubernetes Prometheus
+deployment is not included in this setup.
 
 Configuration: [`monitoring/prometheus.yml`](monitoring/prometheus.yml).
 CI builds the application image, validates the Prometheus configuration, and
-launches real Prometheus to verify a scrape of an isolated known response-time
-sample. This does not modify the running local monitoring stack.
+launches real Prometheus and Grafana to verify scraping, dashboard/data-source
+provisioning, and every provisioned panel query using isolated test observations.
+This does not modify the running local monitoring stack.
+
+## Grafana dashboard
+
+Docker Compose includes **Grafana 13.2.4**, automatically connected to Prometheus
+with a provisioned **API Health Monitor** dashboard. From the repository folder:
+
+```powershell
+docker compose up --build -d
+docker compose ps
+```
+
+Open **http://127.0.0.1:3000**. On a new Grafana volume, sign in with username
+`admin` and password `admin`, then complete Grafana's password-change prompt.
+If you already changed the password, use your saved password. Sign-up and
+anonymous access are disabled; the published port is bound to localhost.
+Change `GRAFANA_PORT` in `.env` if port 3000 is already in use.
+
+The provisioned dashboard opens as the home dashboard, or find it under
+**Dashboards > API Monitoring > API Health Monitor**. Its direct path is
+**http://127.0.0.1:3000/d/api-monitor**. It refreshes every 15 seconds and defaults
+to the last hour. Prometheus collects new samples as the stack runs; earlier
+CSV response times are not backfilled.
+
+Panels cover:
+
+- Exporter scrape health, overdue observations, and clock warnings.
+- Response-time trends in milliseconds and last-check ages in seconds.
+- Last recorded API status per endpoint and freshness per endpoint.
+- CSV check counts by status, recorded endpoints, and the freshness limit.
+
+Read the scrape-health and freshness panels first. A successful scrape does not
+prove the checker is running; a last recorded `UP` status may be stale. Empty
+panels display **NO DATA**, not a healthy value. CSV counts are gauges and may
+decrease when history is archived. These panels reuse the metric definitions and
+limits described above; no alert rules or notification routes are configured.
+
+Grafana users, preferences and password changes persist in `grafana-data`.
+Prometheus samples remain in its separate `prometheus-data` volume.
+`docker compose down` preserves both; adding `--volumes` deletes them. The
+provisioned dashboard and data source come from files in `monitoring/grafana/`.
+Edit those tracked files to change them; direct saving of this dashboard in the
+UI is disabled so the repository remains the source of truth. Grafana uses its
+built-in panels and requires no additional plugins.
+
+If charts are empty, allow a scrape cycle, confirm the time range includes recent
+checks, and query `up{job="api-health-checker"}` in Prometheus. If login or
+provisioning fails, inspect `docker compose logs --tail=100 grafana`. This Grafana
+integration currently runs in Docker Compose, not the Kubernetes deployment.
 
 ## Run directly with Python
 
