@@ -282,6 +282,45 @@ checks, and query `up{job="api-health-checker"}` in Prometheus. If login or
 provisioning fails, inspect `docker compose logs --tail=100 grafana`. This Grafana
 integration currently runs in Docker Compose, not the Kubernetes deployment.
 
+### Verified Grafana monitoring recovery test
+
+The deployed Docker Compose stack was tested by stopping only the checker while
+leaving the dashboard exporter, Prometheus, and Grafana running. The freshness
+limit was 180 seconds. The following observations were captured in the supplied
+Grafana screenshots during the local walkthrough:
+
+| Observation | Checker stopped | After checker restart |
+| --- | --- | --- |
+| Exporter scrape health | SCRAPING | SCRAPING |
+| Overdue observations | 2 | 0 |
+| Clock warnings | 0 | 0 |
+| Checks retained in CSV | 698 | 702 |
+| Last-check age | Rose above eight minutes | Dropped back below the freshness limit |
+
+Commands used from the repository folder, with time allowed between them to
+observe the overdue state and subsequent recovery:
+
+```powershell
+docker compose stop checker
+```
+
+After the last observations exceeded the freshness limit, the overdue state was
+confirmed in Grafana. Monitoring was then resumed:
+
+```powershell
+docker compose start checker
+```
+
+The recovery screenshot shows the last-check-age trend dropping and the retained
+check count increasing. This verifies that new observations resumed and Grafana
+cleared the overdue state after collection and refresh. It also demonstrates that
+successful exporter scraping alone does not establish fresh monitoring data:
+SCRAPING remained visible while both endpoint observations were overdue.
+
+These results validate freshness visibility and recovery in the local Docker
+Compose observability stack. They do not demonstrate an API outage, notification
+delivery, or a Grafana deployment in Kubernetes.
+
 ## Run directly with Python
 
 ### 1. Clone the repository
