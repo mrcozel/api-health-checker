@@ -432,8 +432,26 @@ To test on Docker Compose, open the dashboard and run `docker compose stop check
 After the configured limit, confirm the STALE label and warning banner. Run
 `docker compose start checker`, then refresh after the next completed check and
 confirm the warning clears. This temporarily pauses monitoring; existing history
-is preserved. This test procedure is provided for verification, not recorded as
-an observed deployment result.
+is preserved.
+
+#### Verified Docker Compose freshness test
+
+This procedure was verified on **16 October 2026** using the Docker Compose
+dashboard at **http://127.0.0.1:8080**, with auto-refresh enabled and the default
+180-second freshness limit.
+
+| Step | Observed result |
+| --- | --- |
+| Run `docker compose stop checker` | The checker container stopped successfully. |
+| Leave the dashboard running until checks are overdue | The banner reported: “MONITORING OVERDUE — 2 of 2 endpoints have no check within 3m 0s.” It also stated that last recorded statuses were shown and current health was unknown. |
+| Run `docker compose start checker` | Checks resumed, and the dashboard warning cleared, as confirmed during the walkthrough. |
+
+The overdue state was captured in a dashboard screenshot, and warning clearance
+was confirmed after restarting the checker. This validates overdue-data detection
+and recovery in the deployed Docker Compose application; it does not establish
+that the monitored APIs failed. The screenshot confirms the banner, rather than
+independently verifying each endpoint's STALE badge. This stop/start test was not
+performed against the Kubernetes deployment.
 
 ## Incident history
 
