@@ -1,0 +1,301 @@
+{
+  "rule_files": [
+    "alerts.yml"
+  ],
+  "evaluation_interval": "15s",
+  "tests": [
+    {
+      "interval": "15s",
+      "input_series": [
+        {
+          "series": "up{job=\"api-health-checker\",instance=\"dashboard:8000\"}",
+          "values": "1x20"
+        },
+        {
+          "series": "api_monitor_stale{job=\"api-health-checker\",instance=\"dashboard:8000\",endpoint=\"Sample\",endpoint_id=\"sample\"}",
+          "values": "0x3 1x4 0x3"
+        }
+      ],
+      "alert_rule_test": [
+        {
+          "eval_time": "75s",
+          "alertname": "CheckerOverdue",
+          "exp_alerts": []
+        },
+        {
+          "eval_time": "90s",
+          "alertname": "CheckerOverdue",
+          "exp_alerts": [
+            {
+              "exp_labels": {
+                "job": "api-health-checker",
+                "instance": "dashboard:8000",
+                "endpoint": "Sample",
+                "endpoint_id": "sample",
+                "severity": "warning"
+              },
+              "exp_annotations": {
+                "summary": "Monitoring observations are overdue",
+                "description": "The endpoint has no check within its configured freshness limit. Current API health is unknown. Check the checker process and logs."
+              }
+            }
+          ]
+        },
+        {
+          "eval_time": "135s",
+          "alertname": "CheckerOverdue",
+          "exp_alerts": []
+        }
+      ]
+    },
+    {
+      "interval": "30s",
+      "input_series": [
+        {
+          "series": "up{job=\"api-health-checker\",instance=\"dashboard:8000\"}",
+          "values": "1 0x3 1x2"
+        }
+      ],
+      "alert_rule_test": [
+        {
+          "eval_time": "60s",
+          "alertname": "ExporterUnreachable",
+          "exp_alerts": []
+        },
+        {
+          "eval_time": "90s",
+          "alertname": "ExporterUnreachable",
+          "exp_alerts": [
+            {
+              "exp_labels": {
+                "job": "api-health-checker",
+                "instance": "dashboard:8000",
+                "severity": "critical"
+              },
+              "exp_annotations": {
+                "summary": "Monitoring exporter cannot be scraped",
+                "description": "Prometheus cannot collect dashboard metrics. Check the dashboard service, its data files, and the scrape target."
+              }
+            }
+          ]
+        },
+        {
+          "eval_time": "150s",
+          "alertname": "ExporterUnreachable",
+          "exp_alerts": []
+        }
+      ]
+    },
+    {
+      "interval": "15s",
+      "input_series": [],
+      "alert_rule_test": [
+        {
+          "eval_time": "0s",
+          "alertname": "ExporterUnreachable",
+          "exp_alerts": []
+        },
+        {
+          "eval_time": "60s",
+          "alertname": "ExporterUnreachable",
+          "exp_alerts": [
+            {
+              "exp_labels": {
+                "job": "api-health-checker",
+                "severity": "critical"
+              },
+              "exp_annotations": {
+                "summary": "Monitoring exporter cannot be scraped",
+                "description": "Prometheus cannot collect dashboard metrics. Check the dashboard service, its data files, and the scrape target."
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "interval": "15s",
+      "input_series": [
+        {
+          "series": "up{job=\"api-health-checker\",instance=\"dashboard:8000\"}",
+          "values": "1x20"
+        },
+        {
+          "series": "api_monitor_consecutive_failures{job=\"api-health-checker\",instance=\"dashboard:8000\",endpoint=\"Sample\",endpoint_id=\"sample\"}",
+          "values": "0 1 2 3x4 0x4"
+        },
+        {
+          "series": "api_monitor_last_status{job=\"api-health-checker\",instance=\"dashboard:8000\",endpoint=\"Sample\",endpoint_id=\"sample\",status=\"FAIL\"}",
+          "values": "1x20"
+        },
+        {
+          "series": "api_monitor_stale{job=\"api-health-checker\",instance=\"dashboard:8000\",endpoint=\"Sample\",endpoint_id=\"sample\"}",
+          "values": "0x20"
+        },
+        {
+          "series": "api_monitor_clock_skew{job=\"api-health-checker\",instance=\"dashboard:8000\",endpoint=\"Sample\",endpoint_id=\"sample\"}",
+          "values": "0x20"
+        }
+      ],
+      "alert_rule_test": [
+        {
+          "eval_time": "60s",
+          "alertname": "ApiRepeatedFailures",
+          "exp_alerts": []
+        },
+        {
+          "eval_time": "75s",
+          "alertname": "ApiRepeatedFailures",
+          "exp_alerts": [
+            {
+              "exp_labels": {
+                "job": "api-health-checker",
+                "instance": "dashboard:8000",
+                "endpoint": "Sample",
+                "endpoint_id": "sample",
+                "severity": "critical"
+              },
+              "exp_annotations": {
+                "summary": "API has repeated fresh failures",
+                "description": "At least three consecutive retained checks failed and the latest failure is still fresh. Investigate the endpoint and checker logs."
+              }
+            }
+          ]
+        },
+        {
+          "eval_time": "120s",
+          "alertname": "ApiRepeatedFailures",
+          "exp_alerts": []
+        }
+      ]
+    },
+    {
+      "interval": "15s",
+      "input_series": [
+        {
+          "series": "up{job=\"api-health-checker\",instance=\"dashboard:8000\"}",
+          "values": "1x20"
+        },
+        {
+          "series": "api_monitor_consecutive_failures{job=\"api-health-checker\",instance=\"dashboard:8000\",endpoint=\"Sample\",endpoint_id=\"sample\"}",
+          "values": "4x20"
+        },
+        {
+          "series": "api_monitor_last_status{job=\"api-health-checker\",instance=\"dashboard:8000\",endpoint=\"Sample\",endpoint_id=\"sample\",status=\"FAIL\"}",
+          "values": "1x20"
+        },
+        {
+          "series": "api_monitor_stale{job=\"api-health-checker\",instance=\"dashboard:8000\",endpoint=\"Sample\",endpoint_id=\"sample\"}",
+          "values": "1x20"
+        },
+        {
+          "series": "api_monitor_clock_skew{job=\"api-health-checker\",instance=\"dashboard:8000\",endpoint=\"Sample\",endpoint_id=\"sample\"}",
+          "values": "0x20"
+        }
+      ],
+      "alert_rule_test": [
+        {
+          "eval_time": "120s",
+          "alertname": "ApiRepeatedFailures",
+          "exp_alerts": []
+        }
+      ]
+    },
+    {
+      "interval": "15s",
+      "input_series": [
+        {
+          "series": "up{job=\"api-health-checker\",instance=\"dashboard:8000\"}",
+          "values": "1x20"
+        },
+        {
+          "series": "api_monitor_consecutive_failures{job=\"api-health-checker\",instance=\"dashboard:8000\",endpoint=\"Sample\",endpoint_id=\"sample\"}",
+          "values": "4x20"
+        },
+        {
+          "series": "api_monitor_last_status{job=\"api-health-checker\",instance=\"dashboard:8000\",endpoint=\"Sample\",endpoint_id=\"sample\",status=\"FAIL\"}",
+          "values": "1x20"
+        },
+        {
+          "series": "api_monitor_stale{job=\"api-health-checker\",instance=\"dashboard:8000\",endpoint=\"Sample\",endpoint_id=\"sample\"}",
+          "values": "0x20"
+        },
+        {
+          "series": "api_monitor_clock_skew{job=\"api-health-checker\",instance=\"dashboard:8000\",endpoint=\"Sample\",endpoint_id=\"sample\"}",
+          "values": "1x20"
+        }
+      ],
+      "alert_rule_test": [
+        {
+          "eval_time": "120s",
+          "alertname": "ApiRepeatedFailures",
+          "exp_alerts": []
+        }
+      ]
+    },
+    {
+      "interval": "15s",
+      "input_series": [
+        {
+          "series": "up{job=\"api-health-checker\",instance=\"dashboard:8000\"}",
+          "values": "0x20"
+        },
+        {
+          "series": "api_monitor_consecutive_failures{job=\"api-health-checker\",instance=\"dashboard:8000\",endpoint=\"Sample\",endpoint_id=\"sample\"}",
+          "values": "4x20"
+        },
+        {
+          "series": "api_monitor_last_status{job=\"api-health-checker\",instance=\"dashboard:8000\",endpoint=\"Sample\",endpoint_id=\"sample\",status=\"FAIL\"}",
+          "values": "1x20"
+        },
+        {
+          "series": "api_monitor_stale{job=\"api-health-checker\",instance=\"dashboard:8000\",endpoint=\"Sample\",endpoint_id=\"sample\"}",
+          "values": "0x20"
+        },
+        {
+          "series": "api_monitor_clock_skew{job=\"api-health-checker\",instance=\"dashboard:8000\",endpoint=\"Sample\",endpoint_id=\"sample\"}",
+          "values": "0x20"
+        }
+      ],
+      "alert_rule_test": [
+        {
+          "eval_time": "120s",
+          "alertname": "ApiRepeatedFailures",
+          "exp_alerts": []
+        }
+      ]
+    },
+    {
+      "interval": "15s",
+      "input_series": [
+        {
+          "series": "up{job=\"api-health-checker\",instance=\"dashboard:8000\"}",
+          "values": "1x10"
+        },
+        {
+          "series": "api_monitor_endpoints{job=\"api-health-checker\",instance=\"dashboard:8000\"}",
+          "values": "0x10"
+        }
+      ],
+      "alert_rule_test": [
+        {
+          "eval_time": "30s",
+          "alertname": "CheckerOverdue",
+          "exp_alerts": [
+            {
+              "exp_labels": {
+                "job": "api-health-checker",
+                "instance": "dashboard:8000",
+                "severity": "warning"
+              },
+              "exp_annotations": {
+                "summary": "Monitoring observations are overdue",
+                "description": "The endpoint has no check within its configured freshness limit. Current API health is unknown. Check the checker process and logs."
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

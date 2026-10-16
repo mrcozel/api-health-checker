@@ -321,6 +321,111 @@ These results validate freshness visibility and recovery in the local Docker
 Compose observability stack. They do not demonstrate an API outage, notification
 delivery, or a Grafana deployment in Kubernetes.
 
+## Automatic monitoring alerts
+
+Docker Compose includes **Alertmanager v0.34.1** and a **Mailpit v1.31.6** local
+email inbox. Prometheus evaluates three alert rules every 15 seconds and sends
+firing/resolved state updates to Alertmanager. Mailpit captures the resulting
+emails locally; the default configuration sends nothing to external recipients.
+
+| Alert | Firing condition |
+| --- | --- |
+| `CheckerOverdue` | An endpoint exceeds the configured freshness limit, or the exporter has no recorded endpoints, for another 30 seconds while scraping works. |
+| `ExporterUnreachable` | The scrape target is down or absent for one minute. A metrics HTTP 503 also counts as a failed scrape. |
+| `ApiRepeatedFailures` | At least three consecutive CSV checks are `FAIL`, the latest recorded status is `FAIL`, data is fresh, clocks are valid, and scraping works, for another 30 seconds. |
+
+The new `api_monitor_consecutive_failures` gauge counts consecutive `FAIL` rows
+at the end of each endpoint's retained CSV history. Either `UP` or `SLOW` resets
+this alert-specific streak. This does not change the checker's existing Brevo
+alert logic, whose treatment of slow checks differs. Removing history also resets
+the derived streak. Stale data, clock skew and failed scrapes suppress the API
+failure rule; the overdue/exporter alerts describe the monitoring problem instead.
+
+### Start and inspect alerts
+
+From the repository folder, with Docker Desktop running:
+
+```powershell
+docker compose up --build -d
+docker compose ps
+```
+
+- **Prometheus alerts:** http://127.0.0.1:9090/alerts
+- **Alertmanager:** http://127.0.0.1:9093
+- **Captured email inbox:** http://127.0.0.1:8025
+
+All published ports are restricted to localhost. Alertmanager groups alerts by
+alert name, endpoint identity, job and instance, waits 10 seconds before an initial
+notification, and sends group changes at intervals of at least 30 seconds.
+Unresolved notifications repeat every four hours. Allow for these delays plus
+the 15-second scrape/evaluation cycles before expecting messages.
+
+To test checker-overdue notification and resolution, run these commands separately:
+
+```powershell
+docker compose stop checker
+```
+
+Keep the dashboard, Prometheus, Alertmanager and Mailpit running. After check ages
+exceed three minutes plus the rule/notification delays, inspect Prometheus for
+`CheckerOverdue` and Mailpit for a FIRING email. Then run:
+
+```powershell
+docker compose start checker
+```
+
+After fresh observations arrive, the rule should clear and a RESOLVED email should
+appear. A RESOLVED notification means the rule no longer matches: for an API
+failure alert, that can also happen when data becomes stale or scraping fails,
+so confirm API health using fresh checks. It is not proof of recovery by itself.
+
+This manual procedure has not yet been verified on the user's running stack.
+CI uses promtool tests for pending/firing/recovery, missing targets and suppression,
+plus an isolated Alertmanager/Mailpit test for FIRING and RESOLVED SMTP delivery.
+The delivery test submits synthetic alerts directly to Alertmanager; it does not
+claim end-to-end notification through a live deployed Prometheus rule.
+
+### Optional external email through Brevo SMTP
+
+The checker uses Brevo's HTTP API; Alertmanager requires SMTP credentials instead.
+Use the SMTP server, SMTP login and SMTP key from your Brevo account, with a
+verified sender and your intended recipient. Do not paste credentials into chat.
+
+1. Copy `monitoring/alertmanager.email.example.yml` to
+   `monitoring/alertmanager.email.yml` and replace the sender, SMTP login and
+   recipient placeholders. Confirm the SMTP host and port against your account.
+2. Save only the SMTP key in `monitoring/.smtp-password`. Both local files are
+   ignored by Git and excluded from the application image build context. They
+   still contain sensitive local configuration; restrict access on your machine.
+3. Validate the configuration:
+
+   ```powershell
+   docker compose -f compose.yaml -f compose.email.yaml run --rm --no-deps --entrypoint /bin/amtool alertmanager check-config /etc/alertmanager/alertmanager.yml
+   ```
+
+4. Enable external delivery (this can send mail for existing active alerts):
+
+   ```powershell
+   docker compose -f compose.yaml -f compose.email.yaml up -d alertmanager
+   ```
+
+TLS is required for the SMTP example. The default test-inbox configuration disables
+TLS only for internal delivery to Mailpit. To return to captured local emails, run
+`docker compose up -d --force-recreate alertmanager` without the email override.
+Use the same override whenever recreating Alertmanager if external delivery should
+remain enabled. Do not commit local keys or populated email configuration.
+
+External SMTP delivery has not been configured or tested by this change. The
+existing checker may also send Brevo API notifications when `BREVO_API_KEY` is
+configured; enabling both can produce duplicate API-failure emails. These alerts
+do not detect Prometheus itself stopping, and no alert rules or Alertmanager
+deployment are added to Kubernetes here.
+
+Alertmanager silences/notification state persist in `alertmanager-data`, and
+captured test mail persists in `mailpit-data` (up to 200 messages).
+`docker compose down` preserves volumes; `down --volumes` deletes them.
+To troubleshoot, inspect `docker compose logs --tail=100 prometheus alertmanager mailpit`.
+
 ## Run directly with Python
 
 ### 1. Clone the repository

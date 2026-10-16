@@ -1,0 +1,18 @@
+global:
+  smtp_smarthost: mailpit:1025
+  smtp_from: monitoring@example.test
+  # TLS is disabled only for the isolated local test inbox.
+  smtp_require_tls: false
+
+route:
+  receiver: local-email
+  group_by: [alertname, endpoint_id, job, instance]
+  group_wait: 10s
+  group_interval: 30s
+  repeat_interval: 4h
+
+receivers:
+  - name: local-email
+    email_configs:
+      - to: operator@example.test
+        send_resolved: true

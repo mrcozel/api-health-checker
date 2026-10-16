@@ -78,6 +78,25 @@ class TestMetrics(unittest.TestCase):
         self.assertIn("api_monitor_history_available 0\n", output)
         self.assertNotIn('endpoint="', output)
 
+    def test_failure_streak_counts_retained_checks_and_resets_on_slow(self):
+        path = self.directory / "health_history.csv"
+        rows = ["FAIL", "FAIL", "FAIL"]
+        def write(statuses):
+            with path.open("w", newline="", encoding="utf-8") as file:
+                writer = csv.writer(file)
+                writer.writerow(["timestamp", "name", "url", "status"])
+                for minute, status in enumerate(statuses):
+                    writer.writerow([f"2026-10-16T12:0{minute}:00+00:00", "API", "url", status])
+        write(rows)
+        snapshot = build_snapshot(self.directory)
+        self.assertEqual(snapshot["endpoints"][0]["consecutive_failures"], 3)
+        self.assertTrue(any(line.startswith("api_monitor_consecutive_failures{") and line.endswith(" 3")
+                            for line in render_metrics(snapshot).splitlines()))
+        write(rows + ["SLOW", "FAIL"])
+        self.assertEqual(build_snapshot(self.directory)["endpoints"][0]["consecutive_failures"], 1)
+        write(rows + ["UP"])
+        self.assertEqual(build_snapshot(self.directory)["endpoints"][0]["consecutive_failures"], 0)
+
 
 if __name__ == "__main__":
     unittest.main()

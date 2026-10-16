@@ -10,3 +10,5 @@ health_checker_backup.py
 !.env.example
 msal_token_cache.bin
 endpoint_state.json
+monitoring/alertmanager.email.yml
+monitoring/.smtp-password

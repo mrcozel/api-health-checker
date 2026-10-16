@@ -71,4 +71,8 @@ def render_metrics(snapshot):
             sample("api_monitor_recorded_checks", endpoint["checks_by_status"][status],
                    {**labels(endpoint), "status": status})
 
+    family("api_monitor_consecutive_failures", "Consecutive FAIL rows at the end of this endpoint's retained CSV history; UP or SLOW resets the streak.")
+    for endpoint in endpoints:
+        sample("api_monitor_consecutive_failures", endpoint["consecutive_failures"], labels(endpoint))
+
     return "\n".join(lines) + "\n"

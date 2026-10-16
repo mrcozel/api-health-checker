@@ -1,0 +1,6 @@
+# Optional: docker compose -f compose.yaml -f compose.email.yaml up -d alertmanager
+services:
+  alertmanager:
+    volumes:
+      - ./monitoring/alertmanager.email.yml:/etc/alertmanager/alertmanager.yml:ro
+      - ./monitoring/.smtp-password:/run/secrets/smtp-password:ro
