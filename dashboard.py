@@ -9,6 +9,7 @@ from pathlib import Path
 from urllib.parse import urlsplit
 
 from incident_history import find_incidents, load_checks
+from metrics import render_metrics
 
 
 ASSET = Path(__file__).parent / "dashboard" / "index.html"
@@ -34,7 +35,9 @@ def build_snapshot(data_dir, stale_after_seconds=180, now=None):
     report = data_dir / "health_report.json"
     checks = load_checks(history) if history.exists() else []
     endpoints = {}
+    counts = {}
     for timestamp, name, url, status in checks:
+        counts.setdefault((name, url), {"UP": 0, "SLOW": 0, "FAIL": 0})[status] += 1
         endpoints[(name, url)] = {
             "name": name, "url": url, "status": status,
             "timestamp": timestamp.isoformat(), "response_ms": None,
@@ -60,6 +63,8 @@ def build_snapshot(data_dir, stale_after_seconds=180, now=None):
             endpoints[key] = {k: row.get(k) for k in (
                 "name", "url", "status", "timestamp", "response_ms", "http_code")}
     for endpoint in endpoints.values():
+        endpoint["checks_by_status"] = counts.get(
+            (endpoint["name"], endpoint["url"]), {"UP": 0, "SLOW": 0, "FAIL": 0})
         timestamp = datetime.fromisoformat(endpoint["timestamp"]).astimezone()
         age = (now - timestamp).total_seconds()
         endpoint["age_seconds"] = age
@@ -90,15 +95,21 @@ def make_handler(data_dir, stale_after_seconds=180):
     class Handler(BaseHTTPRequestHandler):
         def do_GET(self):
             path = urlsplit(self.path).path
-            if path == "/api/dashboard":
+            if path in {"/api/dashboard", "/metrics"}:
                 try:
                     payload = build_snapshot(data_dir, stale_after_seconds)
-                    body = json.dumps(payload, allow_nan=False).encode()
+                    body = (render_metrics(payload).encode() if path == "/metrics"
+                            else json.dumps(payload, allow_nan=False).encode())
                 except (OSError, ValueError, TypeError, KeyError) as error:
+                    if path == "/metrics":
+                        self.respond(503, b"Monitoring data unavailable.\n", "text/plain; charset=utf-8")
+                        return
                     self.respond(503, json.dumps({"error": f"Cannot read monitoring data: {error}"}).encode(),
                                  "application/json")
                     return
-                self.respond(200, body, "application/json")
+                content_type = ("text/plain; version=0.0.4; charset=utf-8"
+                                if path == "/metrics" else "application/json")
+                self.respond(200, body, content_type)
             elif path in {"/", "/index.html"}:
                 self.respond(200, ASSET.read_bytes(), "text/html; charset=utf-8")
             else:
