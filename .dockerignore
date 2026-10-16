@@ -6,5 +6,6 @@
 !health_stats.py
 !incident_history.py
 !dashboard.py
+!metrics.py
 !dashboard/
 !dashboard/index.html

@@ -117,6 +117,9 @@ class TestDashboard(unittest.TestCase):
             with urlopen(base + "/api/dashboard") as response:
                 self.assertEqual(json.load(response)["endpoints"], [])
                 self.assertEqual(response.headers["Cache-Control"], "no-store")
+            with urlopen(base + "/metrics") as response:
+                self.assertIn("version=0.0.4", response.headers["Content-Type"])
+                self.assertIn(b"api_monitor_endpoints 0\n", response.read())
             for path in ["/.env", "/health_history.csv", "/../health_checker.py"]:
                 with self.assertRaises(HTTPError) as error:
                     urlopen(base + path)
@@ -125,6 +128,10 @@ class TestDashboard(unittest.TestCase):
             with self.assertRaises(HTTPError) as error:
                 urlopen(base + "/api/dashboard")
             self.assertEqual(error.exception.code, 503)
+            with self.assertRaises(HTTPError) as error:
+                urlopen(base + "/metrics")
+            self.assertEqual(error.exception.code, 503)
+            self.assertEqual(error.exception.read(), b"Monitoring data unavailable.\n")
         finally:
             server.shutdown()
             server.server_close()

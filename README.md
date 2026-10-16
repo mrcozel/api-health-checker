@@ -163,6 +163,76 @@ deployment; port 8081 serves Kubernetes. Each deployment has its own monitoring
 storage. Stopping port-forwarding with Ctrl+C closes browser access through that
 forward; it does not stop monitoring in Kubernetes.
 
+## Prometheus metrics
+
+The dashboard exposes a read-only `/metrics` endpoint in Prometheus text format.
+Docker Compose includes **Prometheus v3.15.0**, scraping `dashboard:8000/metrics`
+every 15 seconds. After pulling this version, run from the repository folder:
+
+```powershell
+docker compose up --build -d
+docker compose ps
+```
+
+Open the dashboard metrics at **http://127.0.0.1:8080/metrics** and Prometheus at
+**http://127.0.0.1:9090**. In Prometheus, open **Status > Target health** and check
+the `api-health-checker` target, or query `up{job="api-health-checker"}`. A value
+of 1 means Prometheus successfully scraped the exporter, not that the monitored
+APIs are healthy or that the checker is still running. Use the freshness metrics
+alongside the last recorded API status.
+
+| Metric | Meaning |
+| --- | --- |
+| `api_monitor_endpoints` | Number of endpoints with recorded observations. |
+| `api_monitor_history_available` | 1 when the history CSV exists; otherwise 0. |
+| `api_monitor_last_status{status="UP\|SLOW\|FAIL"}` | Three separate one-hot series per endpoint, one for each status; the last recorded status has value 1. |
+| `api_monitor_response_seconds` | Latest recorded response time, converted from milliseconds; omitted when unavailable or invalid. |
+| `api_monitor_last_check_timestamp_seconds` | Last check as a Unix timestamp. |
+| `api_monitor_stale` | 1 when the endpoint observation is overdue; otherwise 0. |
+| `api_monitor_clock_skew` | 1 when a check timestamp is more than five seconds in the future. |
+| `api_monitor_stale_after_seconds` | Configured freshness limit, default 180 seconds. |
+| `api_monitor_recorded_checks{status="UP\|SLOW\|FAIL"}` | Retained CSV check count for each endpoint/status combination. |
+
+All exported application metrics are **gauges**. In the table, `UP\|SLOW\|FAIL`
+denotes the three possible label values, not a literal combined value. CSV counts
+can decrease if history is removed or archived; do not apply `rate()` or
+`increase()` to them. Scraping does not create checks or increment counts.
+
+Each endpoint has `endpoint` (configured name) and `endpoint_id` (a stable hash of
+its name and URL) labels, so duplicate names remain distinct. Raw URLs, error
+messages and credentials are not exported. Keep credentials out of endpoint names.
+
+Try these PromQL expressions:
+
+```promql
+api_monitor_response_seconds * 1000
+time() - api_monitor_last_check_timestamp_seconds
+api_monitor_stale == 1
+sum by (status) (api_monitor_recorded_checks)
+api_monitor_last_status{status="FAIL"} == 1
+```
+
+Select a time range in Prometheus to see sampled response-time trends. These are
+snapshots of the latest observations, not a histogram of every request: checks
+between scrapes can be missed. Existing CSV history provides the retained counts;
+Prometheus does not backfill historical response-time samples from the CSV.
+The exporter reads the CSV on every scrape, so large histories increase scrape
+cost. Missing files expose zero endpoints/history availability; unreadable or
+invalid data returns HTTP 503, making the target's `up` value 0 instead of
+silently reporting healthy data. Clock/timezone rules match dashboard freshness.
+
+Prometheus stores its own samples in the `prometheus-data` named volume, with
+15-day time retention and a 1 GB size-retention limit (WAL/head data add overhead).
+`docker compose down` preserves it; `down --volumes` deletes it along with the
+checker history. To change the host port, set `PROMETHEUS_PORT` in `.env`.
+Both dashboard and Prometheus ports are bound to localhost. No Grafana dashboard
+or Kubernetes Prometheus deployment is included in this step.
+
+Configuration: [`monitoring/prometheus.yml`](monitoring/prometheus.yml).
+CI builds the application image, validates the Prometheus configuration, and
+launches real Prometheus to verify a scrape of an isolated known response-time
+sample. This does not modify the running local monitoring stack.
+
 ## Run directly with Python
 
 ### 1. Clone the repository

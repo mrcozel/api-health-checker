@@ -34,3 +34,6 @@ jobs:
           docker run --rm --volume "$PWD:/tests:ro" --workdir /tmp
           --env PYTHONPATH=/tests api-health-checker:test
           python -m unittest discover -s /tests -v
+
+      - name: Verify real Prometheus scrape
+        run: python monitoring/smoke_test.py
