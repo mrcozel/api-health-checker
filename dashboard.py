@@ -2,6 +2,7 @@
 
 import argparse
 import json
+import os
 from datetime import datetime
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -13,7 +14,21 @@ from incident_history import find_incidents, load_checks
 ASSET = Path(__file__).parent / "dashboard" / "index.html"
 
 
-def build_snapshot(data_dir):
+def positive_seconds(value):
+    try:
+        number = int(value)
+    except (TypeError, ValueError):
+        raise argparse.ArgumentTypeError("Freshness limit must be a positive whole number.") from None
+    if number < 1:
+        raise argparse.ArgumentTypeError("Freshness limit must be a positive whole number.")
+    return number
+
+
+def build_snapshot(data_dir, stale_after_seconds=180, now=None):
+    stale_after_seconds = positive_seconds(stale_after_seconds)
+    # Naive checker timestamps use the server's local timezone. Offset-aware
+    # timestamps are compared as instants, independent of the browser's clock.
+    now = (now or datetime.now().astimezone()).astimezone()
     data_dir = Path(data_dir)
     history = data_dir / "health_history.csv"
     report = data_dir / "health_report.json"
@@ -44,6 +59,14 @@ def build_snapshot(data_dir):
                 continue
             endpoints[key] = {k: row.get(k) for k in (
                 "name", "url", "status", "timestamp", "response_ms", "http_code")}
+    for endpoint in endpoints.values():
+        timestamp = datetime.fromisoformat(endpoint["timestamp"]).astimezone()
+        age = (now - timestamp).total_seconds()
+        endpoint["age_seconds"] = age
+        endpoint["freshness"] = (
+            "CLOCK_SKEW" if age < -5 else
+            "STALE" if age >= stale_after_seconds else "FRESH"
+        )
     incidents = []
     for incident in find_incidents(checks):
         incidents.append({
@@ -59,16 +82,17 @@ def build_snapshot(data_dir):
         "check_count": len(checks),
         "available_checks": sum(check[3] in {"UP", "SLOW"} for check in checks),
         "history_available": history.exists(), "report_available": report.exists(),
+        "stale_after_seconds": stale_after_seconds,
     }
 
 
-def make_handler(data_dir):
+def make_handler(data_dir, stale_after_seconds=180):
     class Handler(BaseHTTPRequestHandler):
         def do_GET(self):
             path = urlsplit(self.path).path
             if path == "/api/dashboard":
                 try:
-                    payload = build_snapshot(data_dir)
+                    payload = build_snapshot(data_dir, stale_after_seconds)
                     body = json.dumps(payload, allow_nan=False).encode()
                 except (OSError, ValueError, TypeError, KeyError) as error:
                     self.respond(503, json.dumps({"error": f"Cannot read monitoring data: {error}"}).encode(),
@@ -100,8 +124,11 @@ def main():
                         help="Bind address (use 0.0.0.0 inside a container)")
     parser.add_argument("--data-dir", type=Path, default=Path.cwd(),
                         help="Directory containing checker outputs (default: current directory)")
+    parser.add_argument("--stale-after", type=positive_seconds,
+                        default=os.getenv("STALE_AFTER_SECONDS", "180"),
+                        help="Freshness limit in seconds (env: STALE_AFTER_SECONDS; default: 180)")
     args = parser.parse_args()
-    server = ThreadingHTTPServer((args.host, args.port), make_handler(args.data_dir))
+    server = ThreadingHTTPServer((args.host, args.port), make_handler(args.data_dir, args.stale_after))
     print(f"Dashboard: http://{args.host}:{server.server_port}", flush=True)
     print(f"Reading monitoring data from {args.data_dir.resolve()}", flush=True)
     try:

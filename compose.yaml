@@ -20,6 +20,8 @@ services:
     image: api-health-checker:local
     command: ["python", "/app/dashboard.py", "--host", "0.0.0.0", "--data-dir", "/data"]
     working_dir: /app
+    environment:
+      STALE_AFTER_SECONDS: ${STALE_AFTER_SECONDS:-180}
     restart: unless-stopped
     ports:
       - "127.0.0.1:${DASHBOARD_PORT:-8080}:8000"

@@ -399,6 +399,42 @@ historical checks (`UP` and `SLOW` count as available); average response uses th
 latest endpoint checks with numeric response data. Incidents use the same rules
 and observation limits as the report below.
 
+### Monitoring freshness
+
+Each endpoint shows its last-check age. At **180 seconds** without another check,
+it gains a **STALE** label and the dashboard displays a monitoring-overdue banner.
+The last recorded API status remains visible: an old `UP` result does not establish
+current health, and stale monitoring does not by itself mean the API failed.
+The warning clears when the dashboard loads a new check within the freshness limit.
+
+Set a positive whole-number limit for direct Python use:
+
+```bash
+python dashboard.py --stale-after 180
+```
+
+Alternatively set `STALE_AFTER_SECONDS` in the dashboard process environment.
+For Docker Compose, put `STALE_AFTER_SECONDS=180` in the local `.env` file and
+recreate the dashboard with `docker compose up -d dashboard`. For Kubernetes, edit
+the literal in `k8s/kustomization.yaml`, then apply `kubectl apply -k k8s`.
+Choose a limit that allows for the check interval, the time needed to check every
+endpoint, and normal request delays.
+
+Ages are computed using the dashboard server's clock, not the browser's wall
+clock. Offset-free timestamps use the server's local timezone; run the checker
+and dashboard with matching timezone settings. Timestamps more than five seconds
+in the future produce a clock warning. Endpoints retained only in old history
+also become stale. A failed data refresh keeps the prior snapshot, with a refresh
+error; its age continues increasing. Turning auto-refresh off does not freeze
+ages or warnings. Demo mode uses illustrative ages and is not a live freshness test.
+
+To test on Docker Compose, open the dashboard and run `docker compose stop checker`.
+After the configured limit, confirm the STALE label and warning banner. Run
+`docker compose start checker`, then refresh after the next completed check and
+confirm the warning clears. This temporarily pauses monitoring; existing history
+is preserved. This test procedure is provided for verification, not recorded as
+an observed deployment result.
+
 ## Incident history
 
 After the checker has recorded checks in `health_history.csv`, run:
