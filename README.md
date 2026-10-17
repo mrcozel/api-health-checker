@@ -401,7 +401,7 @@ not establish an API outage or delivery to an external inbox.
 CI separately uses promtool tests for pending/firing/recovery, missing targets
 and suppression, plus an isolated Alertmanager/Mailpit test using synthetic
 alerts. The deployed test above exercises the actual overdue-monitoring rule;
-external Brevo SMTP delivery remains unconfigured and unverified.
+external Brevo SMTP delivery was verified separately as documented below.
 
 ### Optional external email through Brevo SMTP
 
@@ -433,8 +433,37 @@ TLS only for internal delivery to Mailpit. To return to captured local emails, r
 Use the same override whenever recreating Alertmanager if external delivery should
 remain enabled. Do not commit local keys or populated email configuration.
 
-External SMTP delivery has not been configured or tested by this change. The
-existing checker may also send Brevo API notifications when `BREVO_API_KEY` is
+### Verified Brevo SMTP delivery
+
+On **17 October 2026**, external delivery was verified from the local Docker
+Compose stack using the SMTP override. The recipient confirmed that both the
+FIRING and RESOLVED notifications arrived in their real inbox, not Mailpit.
+
+| Stage | Observed result |
+| --- | --- |
+| Configuration validation | `amtool check-config` returned SUCCESS. |
+| Initial delivery attempt | Brevo returned `535 5.7.8 Authentication failed`; configuration validation alone had not verified SMTP credentials. |
+| SMTP login correction | The exact Login from Brevo's SMTP settings was configured, and Alertmanager was recreated with the email override. |
+| Overdue monitoring | A `[FIRING:1] CheckerOverdue` notification for HTTPBin API reached the real inbox. |
+| Checks resumed | The matching `[RESOLVED] CheckerOverdue` notification reached the same real inbox. |
+
+The supplied notification screenshots show the matching HTTPBin alert identity,
+and real-inbox delivery was explicitly confirmed during the walkthrough. This
+verifies **Prometheus → Alertmanager → Brevo SMTP → recipient inbox** for the
+overdue-monitoring condition and its resolution. It does not establish delivery
+for every alert rule or a Kubernetes SMTP deployment.
+
+After correcting local credentials, the configuration was applied using:
+
+```powershell
+docker compose -f compose.yaml -f compose.email.yaml up -d --force-recreate alertmanager
+```
+
+Retain both Compose files when recreating Alertmanager to preserve external
+delivery. SMTP keys, populated email configuration, private sender/recipient
+addresses, and SMTP login values are intentionally excluded from this record.
+
+The existing checker may also send Brevo API notifications when `BREVO_API_KEY` is
 configured; enabling both can produce duplicate API-failure emails. These alerts
 do not detect Prometheus itself stopping, and no alert rules or Alertmanager
 deployment are added to Kubernetes here.
