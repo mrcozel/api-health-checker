@@ -82,6 +82,10 @@ def worker_restore(root, archive_path):
     validate_archive(archive_path)
     if any(root.iterdir()):
         raise ValueError("Restore destination is not empty; refusing to overwrite files.")
+    # A new named volume may inherit the image's non-root /data ownership.
+    # Own only this verified-empty destination while creating restored files.
+    os.chown(root, 0, 0)
+    os.chmod(root, 0o700)
     with zipfile.ZipFile(archive_path) as archive:
         for name in archive.namelist():
             if name == MANIFEST:
