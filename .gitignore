@@ -12,3 +12,5 @@ msal_token_cache.bin
 endpoint_state.json
 monitoring/alertmanager.email.yml
 monitoring/.smtp-password
+backups/
+*.partial
