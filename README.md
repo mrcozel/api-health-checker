@@ -27,7 +27,7 @@ This portfolio project demonstrates practical application-support skills: troubl
 - JSON and CSV
 - `python-dotenv`
 - Python logging and rotating file handlers
-- Unit testing with `unittest`, `unittest.mock`, and `pytest`
+- Unit testing with `unittest` and `unittest.mock`
 - Brevo email API
 - Git, GitHub, and GitHub Actions
 
@@ -565,12 +565,16 @@ python -m venv .venv
 ### 3. Install dependencies
 
 ```bash
-python -m pip install requests python-dotenv pytest
+python -m pip install -r requirements.txt
+python -m pip check
 ```
 
 ### 4. Configure monitoring
 
-The application reads endpoint definitions from `endpoints.json`. Add or edit entries using this format:
+The application reads endpoint definitions from `endpoints.json`. Each endpoint
+must have a unique, non-empty string name: the checker rejects duplicate names
+at startup because its failure counters and notification state use that name.
+Add or edit entries using this format:
 
 ```json
 [
@@ -647,7 +651,28 @@ Email notifications use the Brevo API. Create an API key in your Brevo account a
 setx BREVO_API_KEY "your_brevo_api_key"
 ```
 
-Replace the placeholder with your key, then open a **new** Command Prompt so the variable is available. Ensure the sender address is verified in Brevo and that the sender and recipient settings in `email_alerts.py` are correct.
+Replace the placeholder with your key, then open a **new** Command Prompt so the
+variable is available. Configure the sender and recipient too; the sender must be
+verified in Brevo. Put all three settings in your ignored local `.env` file, using
+your own values:
+
+```dotenv
+BREVO_API_KEY=your_brevo_api_key
+ALERT_SENDER_EMAIL=verified-sender@example.com
+ALERT_RECIPIENT_EMAIL=your-recipient@example.com
+```
+
+These settings apply to the checker's Brevo HTTP API notifications. Both the
+checker and `python email_alerts.py` load `.env`; existing process environment
+variables take precedence. Docker Compose passes all three settings to the
+checker. Apply changes using the recommended startup command with both Compose
+files; restarting an existing container does not update its environment.
+For Kubernetes, include all three in the `monitoring-secrets` Secret.
+
+There are no built-in email addresses. If any setting is missing or blank, sending
+returns a clear configuration error without contacting Brevo, allowing the checker
+to retry later. Alertmanager's separate SMTP configuration is unchanged and does
+not use these settings.
 
 Keep API keys and credentials out of source control. Do not paste real keys into README files, source code, screenshots, or commits.
 
@@ -713,13 +738,16 @@ Generated reports, logs, saved state, local environment files, and the virtual e
 Run the full test suite:
 
 ```bash
-python -m pytest -v
+python -m unittest -v
 ```
 
-Or use Python's built-in test runner:
+This uses Python's built-in test runner; no separate test package is required.
+CI and Docker install the same pinned runtime dependencies from `requirements.txt`.
+For a known-vulnerability audit in your development environment:
 
 ```bash
-python -m unittest -v
+python -m pip install pip-audit
+python -m pip_audit -r requirements.txt
 ```
 
 The tests cover successful responses, HTTP errors, timeouts, connection failures, failure and recovery alerts, retry behaviour when email sending fails, persistence of endpoint state, configuration validation, and statistics calculations. HTTP responses and email sending are mocked in unit tests, so the suite does not need to send real alert emails.

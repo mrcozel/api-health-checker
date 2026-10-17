@@ -41,6 +41,8 @@ kubectl -n api-monitor create secret generic monitoring-secrets --from-env-file=
 kubectl -n api-monitor rollout restart deployment/api-health-checker
 ```
 
+For checker email delivery, include `BREVO_API_KEY`, `ALERT_SENDER_EMAIL` and
+`ALERT_RECIPIENT_EMAIL` in that file. Use a Brevo-verified sender address.
 The checker receives this optional Secret; the dashboard does not. Without an
 email key, monitoring works but email notifications cannot be delivered.
 
