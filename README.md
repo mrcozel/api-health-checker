@@ -37,7 +37,64 @@ The same Docker image runs either the health checker or the dashboard. Docker
 Compose starts both and shares a named volume for reports, history, logs, and
 incident state. Kubernetes runs them together in one Pod with persistent storage.
 
-### Docker Compose
+### Docker Compose: recommended startup with real email
+
+Use this path for normal operation with Brevo SMTP delivery. Start Docker Desktop
+in **Linux containers** mode and wait for its engine to be running. Open PowerShell
+in the repository folder containing `compose.yaml`. Run commands one at a time.
+
+**First time:** edit `endpoints.json`, then follow
+[Brevo SMTP setup](#optional-external-email-through-brevo-smtp) to create the ignored
+local files `monitoring/alertmanager.email.yml` and `monitoring/.smtp-password` and
+validate the configuration. If real email is already configured, keep those files.
+Configuration validation checks syntax, not authentication or delivery.
+
+Start the full stack, resume after stopping it, or apply updates:
+
+```powershell
+docker compose -f compose.yaml -f compose.email.yaml up --build -d
+docker compose -f compose.yaml -f compose.email.yaml ps
+docker compose -f compose.yaml -f compose.email.yaml logs --tail=100 checker alertmanager
+```
+
+Wait for the dashboard to be healthy and the first monitoring cycle to finish.
+
+| Service | Address |
+| --- | --- |
+| API dashboard | http://127.0.0.1:8080 |
+| Grafana | http://127.0.0.1:3000 |
+| Prometheus alerts | http://127.0.0.1:9090/alerts |
+| Alertmanager | http://127.0.0.1:9093 |
+
+Alertmanager sends to the recipient in your local SMTP configuration. Mailpit may
+still run as a dependency, but this path sends to your real inbox. Existing active
+alerts can send email when the stack starts. The checker's separate Brevo HTTP API
+notifications require `BREVO_API_KEY`; Alertmanager SMTP does not use that key.
+
+For a routine restart of existing containers:
+
+```powershell
+docker compose -f compose.yaml -f compose.email.yaml restart
+```
+
+To stop the stack while keeping stored data:
+
+```powershell
+docker compose -f compose.yaml -f compose.email.yaml down
+```
+
+Use the full startup command again after `down`, or after changing code,
+environment settings or SMTP configuration. `restart` does not apply changed
+configuration. **Keep both `-f` options in this order whenever using `up` or
+recreating containers:** Compose does not remember earlier override arguments.
+Plain `docker compose up` can recreate Alertmanager with Mailpit delivery.
+A plain `restart` preserves existing mounts; recreation causes the delivery risk.
+Do not add `--volumes` to `down` unless you intend to delete stored data.
+
+The feature sections below include local-demo commands and historical test
+commands. For normal SMTP-enabled operation, use the full commands above.
+
+#### Alternative: local demo with Mailpit
 
 With Docker Desktop running in **Linux containers** mode, run from the repository
 folder:
@@ -68,7 +125,8 @@ docker compose down
 
 `down` stops the stack and preserves its volume. Do not add `--volumes` unless
 you intend to delete the monitoring history. Without `BREVO_API_KEY`, checks still
-run, but email notifications cannot be delivered. A dashboard health check confirms
+run, but the checker's Brevo API notifications cannot be delivered. Alertmanager
+still sends its monitoring notifications to Mailpit in this demo. A dashboard health check confirms
 that its server responds; it does not claim that monitored APIs are healthy.
 
 ### Kubernetes
@@ -866,4 +924,5 @@ The repository includes a small test server for trying the health checker agains
    The valid key should return **HTTP 200 OK**; the invalid key should return **HTTP 401 Unauthorized**.
 
 These demo credentials are for this local test server only. Do not use them for real services or production credentials.
+
 
