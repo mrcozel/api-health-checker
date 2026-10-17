@@ -1,0 +1,5 @@
+# Only for explicitly switching checker/dashboard to a previously restored volume.
+volumes:
+  monitoring-data:
+    external: true
+    name: ${RESTORE_VOLUME:?Set RESTORE_VOLUME to the verified restored volume name}

@@ -473,6 +473,19 @@ captured test mail persists in `mailpit-data` (up to 200 messages).
 `docker compose down` preserves volumes; `down --volumes` deletes them.
 To troubleshoot, inspect `docker compose logs --tail=100 prometheus alertmanager mailpit`.
 
+## Backup and restore
+
+Use [the monitoring-volume backup and restore guide](docs/backup-restore.md) to
+pause the checker, create a checksum-verified archive, restore into an empty
+separate Docker volume, and verify historical checks before an optional cutover.
+`tools/volume_backup.py` excludes endpoint configuration and SMTP keys, refuses
+overwrites and active volume writers, and preserves the original volume. Archives
+may still contain sensitive monitoring data; keep them protected and off-machine.
+
+CI verifies a restore with isolated Docker volumes and compares restored file
+contents byte-for-byte. This does not claim a completed backup of the live stack.
+Prometheus/Grafana volumes and Kubernetes PVC backups are outside this procedure.
+
 ## Run directly with Python
 
 ### 1. Clone the repository

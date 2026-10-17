@@ -40,3 +40,6 @@ jobs:
 
       - name: Verify alert rules and firing/resolved email delivery
         run: python monitoring/alerting_smoke_test.py
+
+      - name: Verify isolated monitoring volume backup and restore
+        run: python monitoring/backup_smoke_test.py
