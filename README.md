@@ -4,6 +4,10 @@ A Python-based monitoring tool that checks HTTP API availability, measures respo
 
 This portfolio project demonstrates practical application-support skills: troubleshooting, monitoring, incident alerting, persistent state management, logging, reporting, configuration validation, automated testing, and CI.
 
+See the [project summary and architecture diagram](docs/project-summary.md) for
+the system design and verified outcomes, and the [v1.0 release notes draft](docs/release-notes-v1.0.md)
+for release scope, setup changes and known limitations.
+
 ## Features
 
 - **Endpoint monitoring:** Monitor multiple HTTP/REST endpoints configured in `endpoints.json`.
