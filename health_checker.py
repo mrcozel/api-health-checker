@@ -47,12 +47,22 @@ def load_endpoints():
         if not isinstance(endpoints, list) or not endpoints:
             raise ValueError("Endpoint configuration must be a non-empty list.")
 
+        names = set()
         for endpoint in endpoints:
             if not isinstance(endpoint, dict):
                 raise ValueError("Each endpoint must be a JSON object.")
 
             if not endpoint.get("name") or not endpoint.get("url"):
                 raise ValueError("Each endpoint must have a name and URL.")
+
+            name = endpoint["name"]
+            if not isinstance(name, str) or not name.strip():
+                raise ValueError("Each endpoint name must be a non-empty string.")
+            if name in names:
+                raise ValueError(
+                    f"Duplicate endpoint name {name!r}; use a unique name for each endpoint."
+                )
+            names.add(name)
 
             # Validate authentication configuration and required environment variables.
             build_auth_headers(endpoint.get("auth"))

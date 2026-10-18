@@ -1,11 +1,37 @@
 
+import json
 import unittest
-from unittest.mock import patch
+from unittest.mock import mock_open, patch
 
-from health_checker import load_positive_integer
+from health_checker import load_endpoints, load_positive_integer
 
 
 class TestConfiguration(unittest.TestCase):
+
+    def test_reject_duplicate_endpoint_names_with_different_urls(self):
+        endpoints = [
+            {"name": "Payments", "url": "https://example.com/first"},
+            {"name": "Payments", "url": "https://example.com/second"},
+        ]
+        with patch("builtins.open", mock_open(read_data=json.dumps(endpoints))):
+            with self.assertRaisesRegex(ValueError, "Duplicate endpoint name 'Payments'"):
+                load_endpoints()
+
+    def test_accept_unique_names_for_shared_url(self):
+        endpoints = [
+            {"name": "Payments", "url": "https://example.com/health"},
+            {"name": "Orders", "url": "https://example.com/health"},
+        ]
+        with patch("builtins.open", mock_open(read_data=json.dumps(endpoints))):
+            self.assertEqual(load_endpoints(), endpoints)
+
+    def test_reject_invalid_endpoint_names(self):
+        for name in ("   ", 42, ["Payments"]):
+            with self.subTest(name=name):
+                endpoints = [{"name": name, "url": "https://example.com"}]
+                with patch("builtins.open", mock_open(read_data=json.dumps(endpoints))):
+                    with self.assertRaisesRegex(ValueError, "name must be a non-empty string"):
+                        load_endpoints()
 
     @patch.dict("os.environ", {"CHECK_INTERVAL": "30"})
     def test_load_valid_setting(self):

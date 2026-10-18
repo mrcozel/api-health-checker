@@ -1,26 +1,36 @@
 
 import os
 import requests
+from dotenv import load_dotenv
 
 
 BREVO_API_URL = "https://api.brevo.com/v3/smtp/email"
 
 
 def send_alert(subject, message):
-    api_key = os.getenv("BREVO_API_KEY")
+    load_dotenv()
+    api_key = os.getenv("BREVO_API_KEY", "").strip()
 
     if not api_key:
         print("ERROR: BREVO_API_KEY is not configured.")
         return False
 
+    addresses = {}
+    for setting in ("ALERT_SENDER_EMAIL", "ALERT_RECIPIENT_EMAIL"):
+        value = os.getenv(setting, "").strip()
+        if not value:
+            print(f"ERROR: {setting} is not configured.")
+            return False
+        addresses[setting] = value
+
     payload = {
         "sender": {
             "name": "API Health Checker",
-            "email": "ozel1903@gmail.com"
+            "email": addresses["ALERT_SENDER_EMAIL"]
         },
         "to": [
             {
-                "email": "ozel1903@gmail.com"
+                "email": addresses["ALERT_RECIPIENT_EMAIL"]
             }
         ],
         "subject": subject,

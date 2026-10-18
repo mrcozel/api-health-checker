@@ -7,6 +7,8 @@ services:
       CHECK_INTERVAL: ${CHECK_INTERVAL:-60}
       TIMEOUT: ${TIMEOUT:-5}
       BREVO_API_KEY: ${BREVO_API_KEY:-}
+      ALERT_SENDER_EMAIL: ${ALERT_SENDER_EMAIL:-}
+      ALERT_RECIPIENT_EMAIL: ${ALERT_RECIPIENT_EMAIL:-}
     volumes:
       - monitoring-data:/data
       - ./endpoints.json:/data/endpoints.json:ro
