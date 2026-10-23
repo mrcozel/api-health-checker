@@ -716,13 +716,41 @@ python health_stats.py
 
 The report summarises the recorded checks for each endpoint, including observed availability (where `UP` and `SLOW` count as available), average response time, slowest response, and the number of successful, slow, and failed checks.
 
+## ZAVV Link API monitoring
+
+Both `endpoints.json` and `k8s/endpoints.json` include the public machine health
+check at `https://api.zavv.link/healthz`, alongside the existing monitors:
+
+```json
+{
+    "name": "ZAVV Link API",
+    "url": "https://api.zavv.link/healthz",
+    "expected_json": {"ok": true, "status": "healthy", "service": "zavv-link-api"}
+}
+```
+
+`expected_json` is optional. When configured, a successful 2xx response must
+contain a JSON object with every specified top-level field matching its expected
+value and JSON scalar type. Extra fields are allowed; `1` and `"true"` do not
+satisfy `true`. Invalid JSON, missing fields, or mismatches produce `FAIL` even
+if HTTP returns 200 or the response is slow. The report retains the HTTP code
+and response time, with a diagnostic in the existing `error` field.
+
+Endpoints without this setting keep their HTTP-only checks. Valid JSON health
+responses use the existing `UP`/`SLOW` timing threshold. Failures use the same
+three-check Brevo alert threshold, persisted state, retries, and `UP` recovery
+notifications. CSV/JSON schemas and dashboard data inputs are unchanged.
+No credentials are needed for this public endpoint. Apply the usual Compose
+rebuild or Kubernetes configuration/deployment update to enable it in a running
+stack; editing this repository alone does not update an existing deployment.
+
 ## Understanding statuses
 
 | Status | Meaning |
 |---|---|
 | `UP` | The endpoint returned a successful 2xx response within the response-time threshold. |
 | `SLOW` | The endpoint returned a successful 2xx response, but took longer than the threshold. |
-| `FAIL` | The endpoint returned a non-2xx response or the request failed, timed out, or could not connect. |
+| `FAIL` | The endpoint returned a non-2xx response, failed configured JSON validation, or the request failed, timed out, or could not connect. |
 
 A `SLOW` result does not increment the consecutive-failure counter or clear an existing incident state. A healthy `UP` result resets failures below the alert threshold. After a failure alert has been sent, the recovery notification must succeed before the saved incident state is cleared.
 

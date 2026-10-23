@@ -1,10 +1,19 @@
 [
-    {
-        "name": "JSONPlaceholder API",
-        "url": "https://jsonplaceholder.typicode.com/posts/1"
-    },
-    {
-        "name": "HTTPBin API",
-        "url": "https://httpbin.org/status/200"
+  {
+    "name": "JSONPlaceholder API",
+    "url": "https://jsonplaceholder.typicode.com/posts/1"
+  },
+  {
+    "name": "HTTPBin API",
+    "url": "https://httpbin.org/status/200"
+  },
+  {
+    "name": "ZAVV Link API",
+    "url": "https://api.zavv.link/healthz",
+    "expected_json": {
+      "ok": true,
+      "status": "healthy",
+      "service": "zavv-link-api"
     }
+  }
 ]
