@@ -66,7 +66,7 @@ class TestJsonHealth(unittest.TestCase):
 
     def test_shipped_configs_preserve_existing_monitors(self):
         for path in ("endpoints.json", "k8s/endpoints.json"):
-            endpoints = json.loads(Path(path).read_text(encoding="utf-8-sig"))
+            endpoints = json.loads((Path(__file__).resolve().parent / path).read_text(encoding="utf-8-sig"))
             self.assertEqual([e["name"] for e in endpoints],
                              ["JSONPlaceholder API", "HTTPBin API", "ZAVV Link API"])
             self.assertEqual(endpoints[-1], ENDPOINT)
