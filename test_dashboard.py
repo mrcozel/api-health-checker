@@ -113,7 +113,7 @@ class TestDashboard(unittest.TestCase):
         try:
             base = f"http://127.0.0.1:{server.server_port}"
             with urlopen(base) as response:
-                self.assertIn(b"API OBSERVABILITY", response.read())
+                self.assertIn(b"<title>API Health Checker</title>", response.read())
             with urlopen(base + "/api/dashboard") as response:
                 self.assertEqual(json.load(response)["endpoints"], [])
                 self.assertEqual(response.headers["Cache-Control"], "no-store")
