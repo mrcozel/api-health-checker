@@ -772,7 +772,11 @@ GitHub Actions runs the automated tests on pushes and pull requests.
 - Configuration validation and secure handling of secrets
 - Unit testing, mocking, and CI validation
 
-## Cyberpunk monitoring dashboard
+## Midnight Mint monitoring dashboard
+
+Use the top-right Light mode / Dark mode button to switch between Midnight Mint
+and Morning Mint. The browser remembers your choice when local storage is
+available. The product name stays API Health Checker in both themes.
 
 Run the local, read-only dashboard from the project directory:
 
@@ -786,7 +790,8 @@ The dashboard reads `health_report.json` and `health_history.csv`; it does not
 run checks or send alerts. It uses Python's standard library and has no additional
 dependencies or external fonts/scripts.
 
-The dark interface includes high-contrast status labels, response times, observed
+The Midnight Mint theme uses charcoal panels, soft mint accents, subtle borders,
+and readable muted text. The interface includes high-contrast status labels, response times, observed
 availability, ongoing/recovered incident tables, search and status filters, and
 an incident CSV export of the currently filtered rows. Data refreshes every 30
 seconds while the page is visible, or when you press **Refresh data**. Disable
