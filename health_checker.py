@@ -66,7 +66,6 @@ def load_endpoints():
 
             # Validate authentication configuration and required environment variables.
             build_auth_headers(endpoint.get("auth"))
-            validate_expected_json(endpoint.get("expected_json"))
 
         return endpoints
 
@@ -211,53 +210,19 @@ def build_auth_headers(auth_config=None):
     )
 
 
-def validate_expected_json(expected):
-    """Validate optional top-level JSON expectations before monitoring starts."""
-    if expected is None:
-        return
-    if not isinstance(expected, dict) or not expected:
-        raise ValueError("expected_json must be a non-empty JSON object.")
-    for key, value in expected.items():
-        if not isinstance(key, str) or not key.strip():
-            raise ValueError("expected_json keys must be non-empty strings.")
-        if value is not None and type(value) not in (str, bool, int, float):
-            raise ValueError("expected_json values must be JSON scalars.")
-
-
-def response_json_error(response, expected):
-    """Return a safe diagnostic without logging arbitrary response bodies."""
-    try:
-        payload = response.json()
-    except ValueError:
-        return "Response body is not valid JSON"
-    if not isinstance(payload, dict):
-        return "Response JSON must be an object"
-    for key, value in expected.items():
-        if key not in payload:
-            return f"Response JSON missing required field: {key}"
-        if type(payload[key]) is not type(value) or payload[key] != value:
-            return f"Response JSON field does not match expected value: {key}"
-    return None
-
-
-def check_endpoint(name, url, auth_config=None, expected_json=None):
+def check_endpoint(name, url, auth_config=None):
     print(f"\nChecking: {name}")
     logging.info("Checking API: %s", name)
 
     # Resolve credentials before making the request; never log the secret value.
     headers = build_auth_headers(auth_config)
-    validate_expected_json(expected_json)
     start_time = time.perf_counter()
 
     try:
         response = requests.get(url, headers=headers, timeout=TIMEOUT)
         elapsed = (time.perf_counter() - start_time) * 1000
 
-        error = None
-        if 200 <= response.status_code < 300 and expected_json is not None:
-            error = response_json_error(response, expected_json)
-
-        if error or not 200 <= response.status_code < 300:
+        if not 200 <= response.status_code < 300:
             status = "FAIL"
         elif elapsed > SLOW_THRESHOLD_MS:
             status = "SLOW"
@@ -271,7 +236,7 @@ def check_endpoint(name, url, auth_config=None, expected_json=None):
             "status": status,
             "http_code": response.status_code,
             "response_ms": round(elapsed, 2),
-            "error": error
+            "error": None
         }
 
     except requests.exceptions.Timeout:
@@ -419,8 +384,7 @@ def main():
         result = check_endpoint(
             endpoint["name"],
             endpoint["url"],
-            endpoint.get("auth"),
-            endpoint.get("expected_json")
+            endpoint.get("auth")
         )
 
         # All failure and recovery alert logic is handled here.
