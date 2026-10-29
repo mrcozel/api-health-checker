@@ -545,8 +545,50 @@ overwrites and active volume writers, and preserves the original volume. Archive
 may still contain sensitive monitoring data; keep them protected and off-machine.
 
 CI verifies a restore with isolated Docker volumes and compares restored file
-contents byte-for-byte. This does not claim a completed backup of the live stack.
-Prometheus/Grafana volumes and Kubernetes PVC backups are outside this procedure.
+contents byte-for-byte. Prometheus/Grafana volumes and Kubernetes PVC backups are
+outside this procedure.
+
+### Verified live-data backup and separate-volume restore
+
+On **17 October 2026**, a backup of the Docker Compose monitoring volume was
+verified and restored to a separate test volume. The checker was paused for the
+backup, then restarted successfully. Live monitoring continued on the original
+volume; no recovery cutover or overwrite was performed.
+
+| Check | Observed result |
+| --- | --- |
+| Archive | `monitoring-20261017-032759.zip` |
+| Source volume | `api-health-checker_monitoring-data` |
+| Backed-up files | 4 |
+| Historical checks | 1,064 |
+| Uncompressed file bytes | 303,457 |
+| Archive verification | Passed, with matching file/check/byte counts |
+| Restore destination | `api-health-checker-restored-test` |
+| Restore result | 4 files, 1,064 checks and 303,457 bytes; ownership set to UID/GID 10001 |
+| Application read test | `health_stats.py` successfully read 532 checks for each API |
+
+The restored statistics included:
+
+| API | Checks | Availability | Slow checks | Failed checks | Average response | Slowest response |
+| --- | --- | --- | --- | --- | --- | --- |
+| JSONPlaceholder API | 532 | 100.00% | 0 | 0 | 112.38 ms | 343.26 ms |
+| HTTPBin API | 532 | 97.56% | 150 | 13 | 863.69 ms | 3834.78 ms |
+
+These historical values describe this snapshot, not current service health.
+The two sets of 532 checks sum to the 1,064 checks reported by backup verification.
+The verification and restore commands validated the archive's per-file checksums;
+the application-level read confirmed the restored history was usable.
+
+The read test mounted only the restored copy, read-only and without network access:
+
+```powershell
+docker run --rm --network none --mount type=volume,src=api-health-checker-restored-test,dst=/data,readonly api-health-checker:local python /app/health_stats.py
+```
+
+This records a successful local restore drill using live monitoring data, separate
+from the synthetic CI round-trip test. An off-computer backup copy has not yet
+been confirmed. The ZIP itself and its potentially sensitive contents are not
+committed to the repository.
 
 ## Run directly with Python
 
